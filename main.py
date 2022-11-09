@@ -10,6 +10,13 @@ player_sprite = {
     "shoot": []
 }
 
+TILE_FLOOR = (2, 3)
+
+
+def get_tile(tile_x, tile_y):
+    "Récupere la Title aux coordonné donné"
+    return pyxel.tilemap(0).pget(tile_x, tile_y)
+
 
 class Player:
     """
@@ -31,11 +38,12 @@ class Player:
         self.x = 64
         self.y = 90
         self.dir = 1
-        self.floor_y = 90
+        self.floor_y = 105
         # attributs de force (vitesse, graviter, ...)
         self.speed = 0.5
-        self.jump_force = 4
+        self.jump_force = 1.5
         self.player_dy = 0
+        self.player_dx = 0
 
         # attributs des sprites
         self.sprite_ls = sprite_ls
@@ -54,7 +62,7 @@ class Player:
         """ controle des directions du joueur """
         # deplacement à droite
         if pyxel.btn(pyxel.KEY_RIGHT) or pyxel.btn(pyxel.KEY_D) and self.x < 124:
-            self.x += 1
+            self.player_dx = 1
             self.dir = 1
             if self.nb_walk > len(self.walk_liste) - 1:
                 self.nb_walk = 0
@@ -62,7 +70,7 @@ class Player:
                 self.nb_walk += self.speed
         # deplacement à gauche
         elif pyxel.btn(pyxel.KEY_LEFT) or pyxel.btn(pyxel.KEY_Q) and self.x > 0:
-            self.x += -1
+            self.player_dx = -1
             self.dir = -1
             if self.nb_walk > len(self.walk_liste) - 1:
                 self.nb_walk = 0
@@ -97,6 +105,8 @@ class Player:
             self.on_floor = True
             self.nb_jump = 0
         self.y += self.player_dy
+        self.x += self.player_dx
+        self.player_dx = max(self.player_dx - 1, 0)
         self.player_dy = min(self.player_dy + self.gravity, 8)
 
 
