@@ -113,7 +113,7 @@ class Jeu:
         p: le joueur (Player)
     - - - - - - - - - - 
     Methode:
-        update(): acxtualise le joueur et la 
+        update(): actualise le joueur et la 
     """
     def __init__(self, player):
         """ initialisation du joueur et de la fenetre """
