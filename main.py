@@ -1,7 +1,12 @@
 import pyxel
 
-pyxel.init(128, 128, "STICKMAN ADVENTURE")
-pyxel.load("assets.pyxres")
+"""
+A faire:
+- colision avec les murs et le sol
+- colision avec les portes
+- regler probleme de chute
+...
+"""
 
 # position des sprites en fonction du statue
 player_sprite = {
@@ -11,10 +16,19 @@ player_sprite = {
 }
 
 TILE_FLOOR = (2, 3)
+WINDOW_SIZE = 128
+cam_x = 0
+cam_y = 0
+home_lenght = int(23 * 8)
+
+
+pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE")
+pyxel.load("assets.pyxres")
+
 
 
 def get_tile(tile_x, tile_y):
-    "Récupere la Title aux coordonné donné"
+    """ Récupere la Title aux coordonné donné """
     return pyxel.tilemap(0).pget(tile_x, tile_y)
 
 
@@ -29,6 +43,7 @@ class Player:
         deplacement(): gere les deplacement en fonction des touches presser
         update(): actualise les valeurs (position, direction ...)
         draw(): affiche le joueur
+        floor_detection(): detecte si le joueur touche le sol
     
     """
     def __init__(self, sprite_ls):
@@ -83,8 +98,22 @@ class Player:
                 self.player_dy = self.jump_force * -1
 
 
+    def floor_detection(self):
+        """ detecte si le joueur touche le sol """
+        x1 = int(self.x // 8)
+        y1 = int((self.y + 1) // 8)
+        x2 = int((self.x + 8 - 1) // 8)
+        if self.player_dy > 0 and self.y % 8 == 1:
+            for xi in range(x1, x2 + 1):
+                if get_tile(xi, y1 + 1) == TILE_FLOOR:
+                    self.on_floor = True
+                    self.nb_jump = 0
+                    print("floor")
+
+
     def update(self):
         """ actualisation des valeurs et affichage joueur """
+        global cam_x, cam_y
         # actualisation des deplacements du joueur
         self.deplacement()
         # actualisation des sprites du joueur quand il marche
@@ -102,10 +131,22 @@ class Player:
         # actualisation de la force de chute (graviter)
         if self.y > self.floor_y:
             self.y = self.floor_y
-            self.on_floor = True
-            self.nb_jump = 0
-        self.y += self.player_dy
+        #actualisation position joueur
         self.x += self.player_dx
+        self.y += self.player_dy
+        #actualisation position caméra
+        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < home_lenght:
+            self.x = WINDOW_SIZE * 0.8
+            cam_x -= self.player_dx
+        elif self.x < WINDOW_SIZE * 0.2 and cam_x < 0:
+            self.x = WINDOW_SIZE * 0.2
+            cam_x -= self.player_dx
+        if self.x < - 2:
+            self.x = - 2
+        if self.x > WINDOW_SIZE - 6:
+            self.x = WINDOW_SIZE - 6
+        self.floor_detection()
+        #actualisation force deplacement
         self.player_dx = max(self.player_dx - 1, 0)
         self.player_dy = min(self.player_dy + self.gravity, 8)
 
@@ -141,7 +182,7 @@ class Jeu:
         """ affichage des elements du jeu """
         pyxel.cls(0)
         # affichage de la map
-        pyxel.bltm(0, 0, 0, 0, 0, 256, 256)
+        pyxel.bltm(cam_x, cam_y, 0, 0, 0, 256, 256)
         # affichage du joueur
         self.p.draw()
 
