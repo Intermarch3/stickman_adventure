@@ -1,6 +1,6 @@
 ##################################
 #                                #
-#   name: stickman_adventure 2D  #
+#   name: stickman_adventure_2D  #
 #   author: Lucas L              #
 #   date: 11/2022                #
 #                                #
@@ -24,6 +24,22 @@ player_sprite = {
     "shoot": []
 }
 
+text_lvl = [{
+    "x": (2 * 8) + 3,
+    "y": (12 * 8) + 2,
+    "txt": "_1_"
+},
+{
+    "x": (8 * 8) + 3,
+    "y": (12 * 8) + 2,
+    "txt": "_2_"
+},
+{
+    "x": (16 * 8) + 3,
+    "y": (12 * 8) + 2,
+    "txt": "_3_"
+}]
+
 TILE_FLOOR = (2, 3)
 WINDOW_SIZE = 128
 cam_x = 0
@@ -31,8 +47,8 @@ cam_y = 0
 home_lenght = int(23 * 8)
 
 
-pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE")
-pyxel.load("assets.pyxres")
+pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE 2D")
+pyxel.load("stickman_adventure.pyxres")
 
 
 
@@ -117,7 +133,6 @@ class Player:
                 if get_tile(xi, y1 + 1) == TILE_FLOOR:
                     self.on_floor = True
                     self.nb_jump = 0
-                    print("floor")
 
 
     def update(self):
@@ -173,11 +188,13 @@ class Jeu:
         p: le joueur (Player)
     - - - - - - - - - - 
     Methode:
-        update(): actualise le joueur et la 
+        update(): actualise le jeu
+        draw(): affiche le jeu
     """
     def __init__(self, player):
         """ initialisation du joueur et de la fenetre """
         self.p = player
+        self.menu = True
         pyxel.run(self.update, self.draw)
 
 
@@ -192,6 +209,10 @@ class Jeu:
         pyxel.cls(0)
         # affichage de la map
         pyxel.bltm(cam_x, cam_y, 0, 0, 0, 256, 256)
+        # affichage txt level
+        if self.menu:
+            for lvl in text_lvl:
+                pyxel.text(lvl['x'] + cam_x, lvl['y'] + cam_y, lvl["txt"], 7)
         # affichage du joueur
         self.p.draw()
 
