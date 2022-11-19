@@ -6,25 +6,26 @@
 #                                #
 ##################################
 
-
 import pyxel
+
 
 """
 A faire:
 - colision avec les murs et le sol
 - colision avec les portes
-- regler probleme de chute
 ...
 """
 
-# position des sprites en fonction du statue
-player_sprite = {
+# Constantes
+TILE_FLOOR = (2, 3)
+WINDOW_SIZE = 128
+HOME_LENGHT = int(23 * 8)
+PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
     "shoot": []
 }
-
-text_lvl = [{
+TEXT_LVL = [{
     "x": (2 * 8) + 3,
     "y": (12 * 8) + 2,
     "txt": "_1_"
@@ -39,17 +40,6 @@ text_lvl = [{
     "y": (12 * 8) + 2,
     "txt": "_3_"
 }]
-
-TILE_FLOOR = (2, 3)
-WINDOW_SIZE = 128
-cam_x = 0
-cam_y = 0
-home_lenght = int(23 * 8)
-
-
-pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE 2D")
-pyxel.load("stickman_adventure.pyxres")
-
 
 
 def get_tile(tile_x, tile_y):
@@ -81,7 +71,7 @@ class Player:
         self.floor_y = 105
         # attributs de force (vitesse, graviter, ...)
         self.speed = 0.5
-        self.jump_force = 1.5
+        self.jump_force = 3
         self.player_dy = 0
         self.player_dx = 0
 
@@ -125,19 +115,27 @@ class Player:
 
     def floor_detection(self):
         """ detecte si le joueur touche le sol """
-        x1 = int(self.x // 8)
-        y1 = int((self.y + 1) // 8)
-        x2 = int((self.x + 8 - 1) // 8)
-        if self.player_dy > 0 and self.y % 8 == 1:
-            for xi in range(x1, x2 + 1):
-                if get_tile(xi, y1 + 1) == TILE_FLOOR:
-                    self.on_floor = True
-                    self.nb_jump = 0
+        if get_tile(int(self.x / 8), int((self.y + 8) / 8)) == TILE_FLOOR:
+            self.on_floor = True
+            self.player_dy = 0
+            self.y = int(self.y / 8) * 8
 
 
-    def update(self):
-        """ actualisation des valeurs et affichage joueur """
-        global cam_x, cam_y
+    # voire si fonctionne
+    def wall_detection(self):
+        """ detecte si le joueur touche un mur """
+        if get_tile(int((self.x + 8) / 8), int(self.y / 8)) == TILE_FLOOR:
+            self.player_dx = 0
+            self.x = int(self.x / 8) * 8
+
+
+    def update(self, cam_x, cam_y):
+        """ 
+        actualisation des valeurs et affichage joueur 
+        retourne:
+            - cam_x: position de la camera en x
+            - cam_y: position de la camera en y
+        """
         # actualisation des deplacements du joueur
         self.deplacement()
         # actualisation des sprites du joueur quand il marche
@@ -152,14 +150,11 @@ class Player:
             else:
                 self.nb_jump += 0.1
             self.sprite = self.jump_liste[int(self.nb_jump)]
-        # actualisation de la force de chute (graviter)
-        if self.y > self.floor_y:
-            self.y = self.floor_y
         #actualisation position joueur
         self.x += self.player_dx
         self.y += self.player_dy
         #actualisation position caméra
-        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < home_lenght:
+        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < HOME_LENGHT:
             self.x = WINDOW_SIZE * 0.8
             cam_x -= self.player_dx
         elif self.x < WINDOW_SIZE * 0.2 and cam_x < 0:
@@ -169,10 +164,12 @@ class Player:
             self.x = - 2
         if self.x > WINDOW_SIZE - 6:
             self.x = WINDOW_SIZE - 6
-        self.floor_detection()
         #actualisation force deplacement
         self.player_dx = max(self.player_dx - 1, 0)
         self.player_dy = min(self.player_dy + self.gravity, 8)
+        #actualisation detection du sol
+        self.floor_detection()
+        return cam_x, cam_y
 
 
     def draw(self):
@@ -195,27 +192,36 @@ class Jeu:
         """ initialisation du joueur et de la fenetre """
         self.p = player
         self.menu = True
+        self.cam_x = 0
+        self.cam_y = 0
         pyxel.run(self.update, self.draw)
 
 
     def update(self):
         """ actualisation des elements du jeu """
         # actualisation du joueur
-        self.p.update()
+        self.cam_x, self.cam_y = self.p.update(self.cam_x, self.cam_y)
 
 
     def draw(self):
         """ affichage des elements du jeu """
         pyxel.cls(0)
+        # affichage lune
+        pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
         # affichage de la map
-        pyxel.bltm(cam_x, cam_y, 0, 0, 0, 256, 256)
+        pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
         # affichage txt level
         if self.menu:
-            for lvl in text_lvl:
-                pyxel.text(lvl['x'] + cam_x, lvl['y'] + cam_y, lvl["txt"], 7)
+            for lvl in TEXT_LVL:
+                pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
         # affichage du joueur
         self.p.draw()
 
 
 if __name__ == '__main__':
-    Jeu(Player(player_sprite))
+    # initialisation fenetre
+    pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE 2D")
+    # importation map, sprite, music
+    pyxel.load("stickman_adventure.pyxres")
+    # création d'une instance de Jeu
+    Jeu(Player(PLAYER_SPRITE))
