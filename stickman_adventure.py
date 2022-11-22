@@ -12,7 +12,8 @@ import pyxel
 """
 A faire:
 - colision avec les murs et le sol
-- colision avec les portes
+- affichage level
+- affichage ennemie
 ...
 """
 
@@ -20,6 +21,13 @@ A faire:
 TILE_FLOOR = (2, 3)
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
+LVL_SIZE = [{
+    'lvl': 1,
+    'largeur': int(15 * 8),
+    'height': int(15 * 8),
+    'x': 0,
+    'y': 48
+}]
 DOOR_TITLE = [(0, 1), (1, 1)]
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
@@ -246,6 +254,7 @@ class Jeu:
             self.p.draw()
         elif self.level != 0 and self.menu != True:
             print("on level", self.level)
+            pyxel.bltm(0, 0, 0, LVL_SIZE[0]['x'], LVL_SIZE[0]['y'], LVL_SIZE[0]['largeur'], LVL_SIZE[0]['height'], 0) # marche pas
             
 
 
