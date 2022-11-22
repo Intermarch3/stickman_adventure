@@ -20,6 +20,7 @@ A faire:
 TILE_FLOOR = (2, 3)
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
+DOOR_TITLE = [(0, 1), (1, 1)]
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
@@ -65,7 +66,7 @@ class Player:
         """ initialisation des attributs """
         assert type(sprite_ls) == dict
         # attributs de position
-        self.x = 64
+        self.x = 48
         self.y = 90
         self.dir = 1
         self.floor_y = 105
@@ -86,6 +87,9 @@ class Player:
         self.nb_jump = 0
         self.on_floor = True
         self.gravity = 0.5
+        # statue
+        self.on_door = False
+        self.menu = True
 
 
     def deplacement(self):
@@ -111,6 +115,9 @@ class Player:
             if self.on_floor:
                 self.on_floor = False
                 self.player_dy = self.jump_force * -1
+        if pyxel.btn(pyxel.KEY_Z) or pyxel.btn(pyxel.KEY_DOWN):
+            if self.on_door:
+                self.menu = False
 
 
     def floor_detection(self):
@@ -119,6 +126,21 @@ class Player:
             self.on_floor = True
             self.player_dy = 0
             self.y = int(self.y / 8) * 8
+    
+
+    def menu_door_detection(self):
+        """ détecte si le joueur est en face d'une porte de niveau """
+        level = 0
+        for x in range(int(self.x / 8), int((self.x + 8) / 8)):
+            for y in range(int(self.y / 8), int((self.y + 8) / 8)):
+                if get_tile(x, y) in DOOR_TITLE:
+                    self.on_door = True
+                    for lvl in TEXT_LVL:
+                        if self.x >= lvl['x'] - 3 and self.x <= lvl['x'] + 5:
+                            level = int(lvl['txt'].replace("_", ""))
+                else:
+                    self.on_door = False
+        return level
 
 
     # voire si fonctionne
@@ -135,9 +157,11 @@ class Player:
         retourne:
             - cam_x: position de la camera en x
             - cam_y: position de la camera en y
+            - level: le level de la porte en face du joueur
         """
+        level = self.menu_door_detection()
         # actualisation des deplacements du joueur
-        self.deplacement()
+        menu = self.deplacement()
         # actualisation des sprites du joueur quand il marche
         if pyxel.btnp(pyxel.KEY_LEFT, True, True) or pyxel.btnp(pyxel.KEY_RIGHT, True, True):
             self.sprite = self.walk_liste[int(self.nb_walk)]
@@ -169,7 +193,7 @@ class Player:
         self.player_dy = min(self.player_dy + self.gravity, 8)
         #actualisation detection du sol
         self.floor_detection()
-        return cam_x, cam_y
+        return cam_x, cam_y, level
 
 
     def draw(self):
@@ -194,28 +218,35 @@ class Jeu:
         self.menu = True
         self.cam_x = 0
         self.cam_y = 0
+        self.level = 0
         pyxel.run(self.update, self.draw)
 
 
     def update(self):
         """ actualisation des elements du jeu """
         # actualisation du joueur
-        self.cam_x, self.cam_y = self.p.update(self.cam_x, self.cam_y)
+        self.cam_x, self.cam_y, self.level = self.p.update(self.cam_x, self.cam_y)
+        if self.menu:
+            self.menu = self.p.menu
 
 
     def draw(self):
         """ affichage des elements du jeu """
         pyxel.cls(0)
-        # affichage lune
-        pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
-        # affichage de la map
-        pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
-        # affichage txt level
         if self.menu:
-            for lvl in TEXT_LVL:
-                pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
-        # affichage du joueur
-        self.p.draw()
+            # affichage lune
+            pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
+            # affichage de la map
+            pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
+            # affichage txt level
+            if self.menu:
+                for lvl in TEXT_LVL:
+                    pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
+            # affichage du joueur
+            self.p.draw()
+        elif self.level != 0 and self.menu != True:
+            print("on level", self.level)
+            
 
 
 if __name__ == '__main__':
