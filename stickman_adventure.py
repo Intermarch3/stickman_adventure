@@ -11,24 +11,24 @@ import pyxel
 
 """
 A faire:
-- colision avec les murs et le sol
-- affichage level
+- colision avec les murs et le sol dans les level
 - affichage ennemie
 ...
 """
 
 # Constantes
-TILE_FLOOR = (2, 3)
+TILE_FLOOR = [(2, 3), (4, 3)]
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
 LVL_SIZE = [{
     'lvl': 1,
-    'largeur': int(15 * 8),
-    'height': int(15 * 8),
+    'lenght': int(16 * 8),
+    'height': int(16 * 8),
     'x': 0,
-    'y': 48
+    'y': int(48 * 8),
+    'player_pos': (4, int(14 * 8))
 }]
-DOOR_TITLE = [(0, 1), (1, 1)]
+DOOR_TILE = [(0, 1), (1, 1)]
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
@@ -74,10 +74,9 @@ class Player:
         """ initialisation des attributs """
         assert type(sprite_ls) == dict
         # attributs de position
-        self.x = 48
+        self.x = 4
         self.y = 90
         self.dir = 1
-        self.floor_y = 105
         # attributs de force (vitesse, graviter, ...)
         self.speed = 0.5
         self.jump_force = 3
@@ -98,6 +97,7 @@ class Player:
         # statue
         self.on_door = False
         self.menu = True
+        self.level = 0
 
 
     def deplacement(self):
@@ -130,25 +130,22 @@ class Player:
 
     def floor_detection(self):
         """ detecte si le joueur touche le sol """
-        if get_tile(int(self.x / 8), int((self.y + 8) / 8)) == TILE_FLOOR:
+        if get_tile(int(self.x / 8), int((self.y + 8) / 8)) in TILE_FLOOR:
             self.on_floor = True
             self.player_dy = 0
             self.y = int(self.y / 8) * 8
-    
 
     def menu_door_detection(self):
         """ détecte si le joueur est en face d'une porte de niveau """
-        level = 0
         for x in range(int(self.x / 8), int((self.x + 8) / 8)):
             for y in range(int(self.y / 8), int((self.y + 8) / 8)):
-                if get_tile(x, y) in DOOR_TITLE:
+                if get_tile(x, y) in DOOR_TILE:
                     self.on_door = True
                     for lvl in TEXT_LVL:
                         if self.x >= lvl['x'] - 3 and self.x <= lvl['x'] + 5:
-                            level = int(lvl['txt'].replace("_", ""))
+                            self.level = int(lvl['txt'].replace("_", ""))
                 else:
                     self.on_door = False
-        return level
 
 
     # voire si fonctionne
@@ -157,6 +154,26 @@ class Player:
         if get_tile(int((self.x + 8) / 8), int(self.y / 8)) == TILE_FLOOR:
             self.player_dx = 0
             self.x = int(self.x / 8) * 8
+    
+
+    def cam_position(self, cam_x, cam_y):
+        """ actualisation position caméra """
+        # change lenght quand il est dans le menu ou dans un level
+        if self.menu:
+            lenght = HOME_LENGHT
+        else:
+            lenght = LVL_SIZE[0]['lenght'] - 8
+        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < lenght:
+            self.x = WINDOW_SIZE * 0.8
+            cam_x -= self.player_dx
+        elif self.x < WINDOW_SIZE * 0.2 and cam_x < 0:
+            self.x = WINDOW_SIZE * 0.2
+            cam_x -= self.player_dx
+        if self.x < - 2:
+            self.x = - 2
+        if self.x > WINDOW_SIZE - 6:
+            self.x = WINDOW_SIZE - 6
+        return cam_x, cam_y
 
 
     def update(self, cam_x, cam_y):
@@ -165,11 +182,10 @@ class Player:
         retourne:
             - cam_x: position de la camera en x
             - cam_y: position de la camera en y
-            - level: le level de la porte en face du joueur
         """
-        level = self.menu_door_detection()
+        self.menu_door_detection()
         # actualisation des deplacements du joueur
-        menu = self.deplacement()
+        self.deplacement()
         # actualisation des sprites du joueur quand il marche
         if pyxel.btnp(pyxel.KEY_LEFT, True, True) or pyxel.btnp(pyxel.KEY_RIGHT, True, True):
             self.sprite = self.walk_liste[int(self.nb_walk)]
@@ -185,23 +201,13 @@ class Player:
         #actualisation position joueur
         self.x += self.player_dx
         self.y += self.player_dy
-        #actualisation position caméra
-        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < HOME_LENGHT:
-            self.x = WINDOW_SIZE * 0.8
-            cam_x -= self.player_dx
-        elif self.x < WINDOW_SIZE * 0.2 and cam_x < 0:
-            self.x = WINDOW_SIZE * 0.2
-            cam_x -= self.player_dx
-        if self.x < - 2:
-            self.x = - 2
-        if self.x > WINDOW_SIZE - 6:
-            self.x = WINDOW_SIZE - 6
+        cam_x, cam_y = self.cam_position(cam_x, cam_y)
         #actualisation force deplacement
         self.player_dx = max(self.player_dx - 1, 0)
         self.player_dy = min(self.player_dy + self.gravity, 8)
         #actualisation detection du sol
         self.floor_detection()
-        return cam_x, cam_y, level
+        return cam_x, cam_y
 
 
     def draw(self):
@@ -227,15 +233,21 @@ class Jeu:
         self.cam_x = 0
         self.cam_y = 0
         self.level = 0
+        self.enter_level = True
         pyxel.run(self.update, self.draw)
 
 
     def update(self):
         """ actualisation des elements du jeu """
         # actualisation du joueur
-        self.cam_x, self.cam_y, self.level = self.p.update(self.cam_x, self.cam_y)
+        self.cam_x, self.cam_y = self.p.update(self.cam_x, self.cam_y)
         if self.menu:
             self.menu = self.p.menu
+        if self.level == 0:
+            self.level = self.p.level
+        elif self.level != 0 and self.menu != True and self.enter_level:
+            self.enter_level = False
+            self.p.x, self.p.y = LVL_SIZE[self.level - 1]['player_pos'][0], LVL_SIZE[self.level - 1]['player_pos'][1]
 
 
     def draw(self):
@@ -253,9 +265,8 @@ class Jeu:
             # affichage du joueur
             self.p.draw()
         elif self.level != 0 and self.menu != True:
-            print("on level", self.level)
-            pyxel.bltm(0, 0, 0, LVL_SIZE[0]['x'], LVL_SIZE[0]['y'], LVL_SIZE[0]['largeur'], LVL_SIZE[0]['height'], 0) # marche pas
-            
+            pyxel.bltm(0, 0, 0, LVL_SIZE[self.level - 1]['x'], LVL_SIZE[self.level - 1]['y'], LVL_SIZE[self.level - 1]['lenght'], LVL_SIZE[self.level - 1]['height'], 0)
+            self.p.draw()
 
 
 if __name__ == '__main__':
