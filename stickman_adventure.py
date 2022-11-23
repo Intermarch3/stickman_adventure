@@ -93,7 +93,7 @@ class Player:
         self.jump_liste = sprite_ls["jump"]
         self.nb_jump = 0
         self.on_floor = True
-        self.gravity = 0.5
+        self.gravity = 0.05
         # statue
         self.on_door = False
         self.menu = True
@@ -135,6 +135,7 @@ class Player:
             self.player_dy = 0
             self.y = int(self.y / 8) * 8
 
+
     def menu_door_detection(self):
         """ détecte si le joueur est en face d'une porte de niveau """
         for x in range(int(self.x / 8), int((self.x + 8) / 8)):
@@ -154,7 +155,7 @@ class Player:
         if get_tile(int((self.x + 8) / 8), int(self.y / 8)) == TILE_FLOOR:
             self.player_dx = 0
             self.x = int(self.x / 8) * 8
-    
+
 
     def cam_position(self, cam_x, cam_y):
         """ actualisation position caméra """
@@ -176,6 +177,22 @@ class Player:
         return cam_x, cam_y
 
 
+    def player_sprite(self):
+        """ actualisation des sprite du joueur """
+        # quand il marche
+        if pyxel.btnp(pyxel.KEY_LEFT, True, True) or pyxel.btnp(pyxel.KEY_RIGHT, True, True):
+            self.sprite = self.walk_liste[int(self.nb_walk)]
+        else:
+            self.sprite = self.walk_liste[0]
+        # quand il saute
+        if self.on_floor == False:
+            if self.nb_jump >= len(self.jump_liste) - 1:
+                self.nb_jump = 0
+            else:
+                self.nb_jump += 0.1
+            self.sprite = self.jump_liste[int(self.nb_jump)]
+
+
     def update(self, cam_x, cam_y):
         """ 
         actualisation des valeurs et affichage joueur 
@@ -183,21 +200,13 @@ class Player:
             - cam_x: position de la camera en x
             - cam_y: position de la camera en y
         """
-        self.menu_door_detection()
+        # detection des porte dans le menu
+        if self.menu:
+            self.menu_door_detection()
         # actualisation des deplacements du joueur
         self.deplacement()
-        # actualisation des sprites du joueur quand il marche
-        if pyxel.btnp(pyxel.KEY_LEFT, True, True) or pyxel.btnp(pyxel.KEY_RIGHT, True, True):
-            self.sprite = self.walk_liste[int(self.nb_walk)]
-        else:
-            self.sprite = self.walk_liste[0]
-        # actualisation des sprites du joueur quand il saute
-        if self.on_floor == False:
-            if self.nb_jump >= len(self.jump_liste) - 1:
-                self.nb_jump = 0
-            else:
-                self.nb_jump += 0.1
-            self.sprite = self.jump_liste[int(self.nb_jump)]
+        # actualisation des sprites
+        self.player_sprite()
         #actualisation position joueur
         self.x += self.player_dx
         self.y += self.player_dy
