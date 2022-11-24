@@ -10,18 +10,39 @@ import pyxel
 
 
 """
-A faire:
-- colision avec les murs et le sol dans les level
-- affichage ennemie
+TODO:
+- colision par le haut du joueur dans un bloc
+- ennemies (attaque, affichage, update ...)
+- documentation
+- creation music et effets musicals
+- joueur peut tirer
+- joueur meur par dega chute
+- joueur meur par balle ennemies
+- victoire quand joueur attrape une clée
 ...
 """
 
 # Constantes
-TILE_FLOOR = [(2, 3), (4, 3)]
+TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (8, 0), (9, 0), (8, 1), (8, 2), (8, 3), (9, 1), (9, 2), (9, 3), (9, 4)]
+TILE_WALL = [(4, 3), (8, 1), (8, 2), (8, 3), (9, 1), (9, 2), (9, 3), (9, 4)]
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
 LVL_SIZE = [{
     'lvl': 1,
+    'lenght': int(16 * 8),
+    'height': int(16 * 8),
+    'x': 0,
+    'y': int(48 * 8),
+    'player_pos': (4, int(14 * 8))
+}, {
+    'lvl': 2,
+    'lenght': int(16 * 8),
+    'height': int(16 * 8),
+    'x': 0,
+    'y': int(48 * 8),
+    'player_pos': (4, int(14 * 8))
+}, {
+    'lvl': 3,
     'lenght': int(16 * 8),
     'height': int(16 * 8),
     'x': 0,
@@ -79,7 +100,7 @@ class Player:
         self.dir = 1
         # attributs de force (vitesse, graviter, ...)
         self.speed = 0.5
-        self.jump_force = 3
+        self.jump_force = 3.2
         self.player_dy = 0
         self.player_dx = 0
 
@@ -93,7 +114,7 @@ class Player:
         self.jump_liste = sprite_ls["jump"]
         self.nb_jump = 0
         self.on_floor = True
-        self.gravity = 0.05
+        self.gravity = 0.45
         # statue
         self.on_door = False
         self.menu = True
@@ -130,10 +151,31 @@ class Player:
 
     def floor_detection(self):
         """ detecte si le joueur touche le sol """
-        if get_tile(int(self.x / 8), int((self.y + 8) / 8)) in TILE_FLOOR:
-            self.on_floor = True
-            self.player_dy = 0
-            self.y = int(self.y / 8) * 8
+        # ajustement des coordonné en fonction du level
+        if self.level != 0 and self.menu != True:
+            y = self.y + LVL_SIZE[self.level - 1]['y']
+        else:
+            y = self.y
+        if self.level != 0:
+            x = self.x + LVL_SIZE[self.level - 1]['x']
+        else:
+            x = self.x
+        # ajustement des coordonné en fonction de l'orientation
+        left, right = 0, 0
+        if self.dir == 1:
+            left = -3
+        else:
+            right = 3
+        # detection du sol
+        for xi in range(int(x + right), int(x + 8 + left)):
+            if self.player_dy > 0:
+                if get_tile(int(xi / 8), int((y + 8) / 8)) in TILE_FLOOR:
+                    self.on_floor = True
+                    self.player_dy = 0
+                    self.y = int(self.y / 8) * 8
+                    break
+                else:
+                    self.on_floor = False
 
 
     def menu_door_detection(self):
@@ -149,12 +191,31 @@ class Player:
                     self.on_door = False
 
 
-    # voire si fonctionne
     def wall_detection(self):
         """ detecte si le joueur touche un mur """
-        if get_tile(int((self.x + 8) / 8), int(self.y / 8)) == TILE_FLOOR:
-            self.player_dx = 0
-            self.x = int(self.x / 8) * 8
+        # ajustement des coordonne en fonction du level
+        if self.level != 0 and self.menu != True:
+            y = self.y + LVL_SIZE[self.level - 1]['y']
+        else:
+            y = self.y
+        if self.level != 0:
+            x = self.x + LVL_SIZE[self.level - 1]['x']
+        else:
+            x = self.x
+        # quand avance a droite
+        if self.player_dx > 0:
+            for yi in range(int(y), int(y + 8)):
+                if get_tile(int((x + 6) / 8), int(yi / 8)) in TILE_WALL:
+                    self.player_dx = 0
+                    self.x = int(self.x / 8) * 8 + 2
+                    break
+        # quand avance a gauche
+        elif self.player_dx < 0:
+            for yi in range(int(y), int(y + 8)):
+                if get_tile(int((x + 3) / 8), int(yi / 8)) in TILE_WALL:
+                    self.player_dx = 0
+                    self.x = int(self.x / 8) * 8 + 5
+                    break
 
 
     def cam_position(self, cam_x, cam_y):
@@ -163,7 +224,7 @@ class Player:
         if self.menu:
             lenght = HOME_LENGHT
         else:
-            lenght = LVL_SIZE[0]['lenght'] - 8
+            lenght = LVL_SIZE[self.level - 1]['lenght'] - 8
         if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < lenght:
             self.x = WINDOW_SIZE * 0.8
             cam_x -= self.player_dx
@@ -212,10 +273,12 @@ class Player:
         self.y += self.player_dy
         cam_x, cam_y = self.cam_position(cam_x, cam_y)
         #actualisation force deplacement
-        self.player_dx = max(self.player_dx - 1, 0)
         self.player_dy = min(self.player_dy + self.gravity, 8)
         #actualisation detection du sol
         self.floor_detection()
+        self.wall_detection()
+        # actualisation force deplacement gauche droite
+        self.player_dx = max(self.player_dx - 1, 0)
         return cam_x, cam_y
 
 
@@ -237,6 +300,7 @@ class Jeu:
     """
     def __init__(self, player):
         """ initialisation du joueur et de la fenetre """
+        assert type(player) == Player, "mauvais parametre"
         self.p = player
         self.menu = True
         self.cam_x = 0
@@ -262,6 +326,7 @@ class Jeu:
     def draw(self):
         """ affichage des elements du jeu """
         pyxel.cls(0)
+        # si dans le menu
         if self.menu:
             # affichage lune
             pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
@@ -273,6 +338,7 @@ class Jeu:
                     pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
             # affichage du joueur
             self.p.draw()
+        # si dans un level
         elif self.level != 0 and self.menu != True:
             pyxel.bltm(0, 0, 0, LVL_SIZE[self.level - 1]['x'], LVL_SIZE[self.level - 1]['y'], LVL_SIZE[self.level - 1]['lenght'], LVL_SIZE[self.level - 1]['height'], 0)
             self.p.draw()
