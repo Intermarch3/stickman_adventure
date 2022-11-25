@@ -11,7 +11,6 @@ import pyxel
 
 """
 TODO:
-- colision par le haut du joueur dans un bloc
 - ennemies (attaque, affichage, update ...)
 - documentation
 - creation music et effets musicals
@@ -49,6 +48,7 @@ LVL_SIZE = [{
     'y': int(48 * 8),
     'player_pos': (4, int(14 * 8))
 }]
+KEY_TILE = (6, 1)
 DOOR_TILE = [(0, 1), (1, 1)]
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
@@ -114,11 +114,13 @@ class Player:
         self.jump_liste = sprite_ls["jump"]
         self.nb_jump = 0
         self.on_floor = True
-        self.gravity = 0.45
-        # statue
+        self.gravity = 0.45 # 0.45
+        # autre
         self.on_door = False
         self.menu = True
         self.level = 0
+        self.vie = True
+        self.win_level = False
 
 
     def deplacement(self):
@@ -190,6 +192,27 @@ class Player:
                 else:
                     self.on_door = False
 
+    def key_detection(self):
+        """ detecte si le joueur attrape la clee du niveau """
+        # ajustement des coordonné en fonction du level
+        if self.level != 0 and self.menu != True:
+            y = self.y + LVL_SIZE[self.level - 1]['y']
+        else:
+            y = self.y
+        if self.level != 0:
+            x = self.x + LVL_SIZE[self.level - 1]['x']
+        else:
+            x = self.x
+        for xi in range(int(x), int(x + 8)):
+            for yi in range(int(y), int(y + 8)):
+                if get_tile(int(xi / 8), int(yi / 8)) == KEY_TILE:
+                    if self.win_level != True:
+                         self.win_level = True
+                         break
+            if self.win_level:
+                break
+                    
+
 
     def wall_detection(self):
         """ detecte si le joueur touche un mur """
@@ -215,6 +238,31 @@ class Player:
                 if get_tile(int((x + 3) / 8), int(yi / 8)) in TILE_WALL:
                     self.player_dx = 0
                     self.x = int(self.x / 8) * 8 + 5
+                    break
+      
+      
+    def roof_detection(self):
+        """ detecte si le joueur tape sur un bloc par le haut """
+        if self.level != 0 and self.menu != True:
+            y = self.y + LVL_SIZE[self.level - 1]['y']
+        else:
+            y = self.y
+        if self.level != 0:
+            x = self.x + LVL_SIZE[self.level - 1]['x']
+        else:
+            x = self.x
+        # ajustement des coordonné en fonction de l'orientation
+        left, right = 0, 0
+        if self.dir == 1:
+            left = -3
+        else:
+            right = 3
+        # detection du toit
+        if self.player_dy < 0:
+            for xi in range(int(x + right), int(x + 8 + left)):
+                if get_tile(int(xi / 8), int(y / 8)) in TILE_WALL:
+                    self.player_dy = 0
+                    self.y = int((self.y + 8) / 8) * 8
                     break
 
 
@@ -272,11 +320,13 @@ class Player:
         self.x += self.player_dx
         self.y += self.player_dy
         cam_x, cam_y = self.cam_position(cam_x, cam_y)
-        #actualisation force deplacement
+        #actualisation force saut et chute
         self.player_dy = min(self.player_dy + self.gravity, 8)
-        #actualisation detection du sol
+        #actualisation des colisions
         self.floor_detection()
         self.wall_detection()
+        self.roof_detection()
+        self.key_detection()
         # actualisation force deplacement gauche droite
         self.player_dx = max(self.player_dx - 1, 0)
         return cam_x, cam_y
