@@ -59,13 +59,11 @@ TEXT_LVL = [{
     "x": (2 * 8) + 3,
     "y": (12 * 8) + 2,
     "txt": "_1_"
-},
-{
+}, {
     "x": (8 * 8) + 3,
     "y": (12 * 8) + 2,
     "txt": "_2_"
-},
-{
+}, {
     "x": (16 * 8) + 3,
     "y": (12 * 8) + 2,
     "txt": "_3_"
@@ -103,7 +101,6 @@ class Player:
         self.jump_force = 3.2
         self.player_dy = 0
         self.player_dx = 0
-
         # attributs des sprites
         self.sprite_ls = sprite_ls
         # pour la marche
@@ -192,6 +189,7 @@ class Player:
                 else:
                     self.on_door = False
 
+
     def key_detection(self):
         """ detecte si le joueur attrape la clee du niveau """
         # ajustement des coordonné en fonction du level
@@ -207,11 +205,10 @@ class Player:
             for yi in range(int(y), int(y + 8)):
                 if get_tile(int(xi / 8), int(yi / 8)) == KEY_TILE:
                     if self.win_level != True:
-                         self.win_level = True
-                         break
+                            self.win_level = True
+                            break
             if self.win_level:
                 break
-                    
 
 
     def wall_detection(self):
@@ -239,8 +236,8 @@ class Player:
                     self.player_dx = 0
                     self.x = int(self.x / 8) * 8 + 5
                     break
-      
-      
+
+
     def roof_detection(self):
         """ detecte si le joueur tape sur un bloc par le haut """
         if self.level != 0 and self.menu != True:
@@ -337,6 +334,57 @@ class Player:
         pyxel.blt(self.x, self.y, 0, self.sprite[0], self.sprite[1], 8 * self.dir, 8, 0)
 
 
+class Map:
+    """ classe pour les maps """
+    def __init__(self):
+        """ 
+        initialisation de la map 
+        parametre:
+            - level: level en cours
+        """
+        self.level = 0
+        self.menu = True
+        self.cam_x = 0
+        self.cam_y = 0
+
+
+    def draw_menu(self):
+        """ affichage du menu """
+        # affichage lune
+        pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
+        # affichage de la map
+        pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
+        # affichage txt level
+        if self.menu:
+            for lvl in TEXT_LVL:
+                pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
+
+    
+    def draw_level(self):
+        """ affichage du level """
+        pyxel.bltm(self.cam_x, self.cam_y, 0, \
+                LVL_SIZE[self.level - 1]['x'], LVL_SIZE[self.level - 1]['y'], \
+                LVL_SIZE[self.level - 1]['lenght'], LVL_SIZE[self.level - 1]['height'], 0)
+
+
+
+    def update(self, menu, level):
+        """ actualisation de la map """
+        if self.menu:
+            self.menu = menu
+        if self.level == 0:
+            self.level = level
+
+
+    def draw(self):
+        """ affichage de la map """
+        if self.menu:
+            self.draw_menu()
+        else:
+            self.draw_level()
+
+
+
 class Jeu:
     """
     class Jeu qui actualise le joueur et la fenetre
@@ -352,9 +400,8 @@ class Jeu:
         """ initialisation du joueur et de la fenetre """
         assert type(player) == Player, "mauvais parametre"
         self.p = player
+        self.map = Map()
         self.menu = True
-        self.cam_x = 0
-        self.cam_y = 0
         self.level = 0
         self.enter_level = True
         pyxel.run(self.update, self.draw)
@@ -362,41 +409,30 @@ class Jeu:
 
     def update(self):
         """ actualisation des elements du jeu """
-        # actualisation du joueur
-        self.cam_x, self.cam_y = self.p.update(self.cam_x, self.cam_y)
-        if self.menu:
-            self.menu = self.p.menu
-        if self.level == 0:
-            self.level = self.p.level
-        elif self.level != 0 and self.menu != True and self.enter_level:
+        # actualisation du joueur et de la position de la camera
+        self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y)
+        # actualisation de la map
+        self.map.update(self.p.menu, self.p.level)
+        # actualisation entrer dans un level
+        if self.level != 0 and self.menu != True and self.enter_level:
             self.enter_level = False
-            self.p.x, self.p.y = LVL_SIZE[self.level - 1]['player_pos'][0], LVL_SIZE[self.level - 1]['player_pos'][1]
+            self.p.x = LVL_SIZE[self.level - 1]['player_pos'][0]
+            self.p.y = LVL_SIZE[self.level - 1]['player_pos'][1]
 
 
     def draw(self):
         """ affichage des elements du jeu """
         pyxel.cls(0)
-        # si dans le menu
-        if self.menu:
-            # affichage lune
-            pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
-            # affichage de la map
-            pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
-            # affichage txt level
-            if self.menu:
-                for lvl in TEXT_LVL:
-                    pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
-            # affichage du joueur
-            self.p.draw()
-        # si dans un level
-        elif self.level != 0 and self.menu != True:
-            pyxel.bltm(0, 0, 0, LVL_SIZE[self.level - 1]['x'], LVL_SIZE[self.level - 1]['y'], LVL_SIZE[self.level - 1]['lenght'], LVL_SIZE[self.level - 1]['height'], 0)
-            self.p.draw()
+        # affichage de la map
+        self.map.draw()
+        # affichage du joueur
+        self.p.draw()
 
 
 if __name__ == '__main__':
     # initialisation fenetre
     pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE 2D")
+    pyxel.mouse(False)
     # importation map, sprite, music
     pyxel.load("stickman_adventure.pyxres")
     # création d'une instance de Jeu
