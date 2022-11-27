@@ -53,7 +53,7 @@ DOOR_TILE = [(0, 1), (1, 1)]
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
-    "shoot": []
+    "shoot": [[8, 8], [8, 0], [0, 0]]
 }
 TEXT_LVL = [{
     "x": (2 * 8) + 3,
@@ -112,6 +112,10 @@ class Player:
         self.nb_jump = 0
         self.on_floor = True
         self.gravity = 0.45 # 0.45
+        # pour le tir
+        self.shoot_liste = sprite_ls["shoot"]
+        self.nb_shoot = 0
+        self.shoot = False
         # autre
         self.on_door = False
         self.menu = True
@@ -146,6 +150,9 @@ class Player:
         if pyxel.btn(pyxel.KEY_Z) or pyxel.btn(pyxel.KEY_DOWN):
             if self.on_door:
                 self.menu = False
+        # tir
+        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
+            self.shoot = True
 
 
     def floor_detection(self):
@@ -297,6 +304,14 @@ class Player:
             else:
                 self.nb_jump += 0.1
             self.sprite = self.jump_liste[int(self.nb_jump)]
+        # quand il tire
+        if self.shoot:
+            if self.nb_shoot >= len(self.shoot_liste) - 1:
+                self.nb_shoot = 0
+                self.shoot = False
+            else:
+                self.nb_shoot += 0.1
+            self.sprite = self.shoot_liste[int(self.nb_shoot)]
 
 
     def update(self, cam_x, cam_y):
