@@ -8,16 +8,13 @@
 
 import pyxel
 
-
 """
 TODO:
 - ennemies (attaque, affichage, update ...)
 - documentation
 - creation music et effets musicals
-- joueur peut tirer
 - joueur meur par dega chute
-- joueur meur par balle ennemies
-- victoire quand joueur attrape une clée
+- joueur meur par Bullete ennemies
 ...
 """
 
@@ -75,6 +72,27 @@ def get_tile(tile_x, tile_y):
     return pyxel.tilemap(0).pget(tile_x, tile_y)
 
 
+class Bullet:
+    def __init__(self, x, y, dir):
+        self.dir = dir
+        self.speed = 5
+        self.init_x = x
+        self.init_y = y
+        self.x = self.init_x
+        self.y = self.init_y
+
+
+    def trajectoire(self):
+        if self.dir == 1:
+            self.x += self.speed
+        else:
+            self.x -= self.speed
+
+
+    def draw(self):
+        pyxel.rect(self.x, self.y, 1, 1, 8)
+
+
 class Player:
     """
     class Player qui controle le joueur principal
@@ -122,6 +140,11 @@ class Player:
         self.level = 0
         self.vie = True
         self.win_level = False
+        self.cam_x = 0
+        self.cam_y = 0
+        # tire
+        self.tire_ls = []
+        self.first_bullet = True
 
 
     def deplacement(self):
@@ -151,21 +174,28 @@ class Player:
             if self.on_door:
                 self.menu = False
         # tir
-        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
+        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT) or pyxel.btn(pyxel.KEY_V):
             self.shoot = True
+            if self.dir == 1:
+                x = self.x + 6
+            else:
+                x = self.x + 2
+            if int(self.nb_shoot) == 0 and self.first_bullet:
+                self.first_bullet = False
+                self.tire_ls.append(Bullet(x, self.y + 1, self.dir))
 
 
     def floor_detection(self):
         """ detecte si le joueur touche le sol """
         # ajustement des coordonné en fonction du level
         if self.level != 0 and self.menu != True:
-            y = self.y + LVL_SIZE[self.level - 1]['y']
+            y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
-            y = self.y
+            y = self.y - self.cam_y
         if self.level != 0:
-            x = self.x + LVL_SIZE[self.level - 1]['x']
+            x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
-            x = self.x
+            x = self.x - self.cam_x
         # ajustement des coordonné en fonction de l'orientation
         left, right = 0, 0
         if self.dir == 1:
@@ -191,7 +221,7 @@ class Player:
                 if get_tile(x, y) in DOOR_TILE:
                     self.on_door = True
                     for lvl in TEXT_LVL:
-                        if self.x >= lvl['x'] - 3 and self.x <= lvl['x'] + 5:
+                        if self.x - self.cam_x >= lvl['x'] - 3 and self.x - self.cam_x <= lvl['x'] + 5:
                             self.level = int(lvl['txt'].replace("_", ""))
                 else:
                     self.on_door = False
@@ -201,34 +231,34 @@ class Player:
         """ detecte si le joueur attrape la clee du niveau """
         # ajustement des coordonné en fonction du level
         if self.level != 0 and self.menu != True:
-            y = self.y + LVL_SIZE[self.level - 1]['y']
+            y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
-            y = self.y
+            y = self.y - self.cam_y
         if self.level != 0:
-            x = self.x + LVL_SIZE[self.level - 1]['x']
+            x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
-            x = self.x
+            x = self.x - self.cam_x
         for xi in range(int(x), int(x + 8)):
             for yi in range(int(y), int(y + 8)):
                 if get_tile(int(xi / 8), int(yi / 8)) == KEY_TILE:
                     if self.win_level != True:
                             self.win_level = True
                             break
-            if self.win_level:
-                break
+                else:
+                    self.win_level = False
 
 
     def wall_detection(self):
         """ detecte si le joueur touche un mur """
         # ajustement des coordonne en fonction du level
         if self.level != 0 and self.menu != True:
-            y = self.y + LVL_SIZE[self.level - 1]['y']
+            y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
-            y = self.y
+            y = self.y - self.cam_y
         if self.level != 0:
-            x = self.x + LVL_SIZE[self.level - 1]['x']
+            x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
-            x = self.x
+            x = self.x - self.cam_x
         # quand avance a droite
         if self.player_dx > 0:
             for yi in range(int(y), int(y + 8)):
@@ -248,13 +278,13 @@ class Player:
     def roof_detection(self):
         """ detecte si le joueur tape sur un bloc par le haut """
         if self.level != 0 and self.menu != True:
-            y = self.y + LVL_SIZE[self.level - 1]['y']
+            y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
-            y = self.y
+            y = self.y - self.cam_y
         if self.level != 0:
-            x = self.x + LVL_SIZE[self.level - 1]['x']
+            x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
-            x = self.x
+            x = self.x - self.cam_x
         # ajustement des coordonné en fonction de l'orientation
         left, right = 0, 0
         if self.dir == 1:
@@ -270,24 +300,23 @@ class Player:
                     break
 
 
-    def cam_position(self, cam_x, cam_y):
+    def cam_position(self):
         """ actualisation position caméra """
         # change lenght quand il est dans le menu ou dans un level
         if self.menu:
             lenght = HOME_LENGHT
         else:
             lenght = LVL_SIZE[self.level - 1]['lenght'] - 8
-        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - cam_x < lenght:
+        if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - self.cam_x < lenght:
             self.x = WINDOW_SIZE * 0.8
-            cam_x -= self.player_dx
-        elif self.x < WINDOW_SIZE * 0.2 and cam_x < 0:
+            self.cam_x -= self.player_dx
+        elif self.x < WINDOW_SIZE * 0.2 and self.cam_x < 0:
             self.x = WINDOW_SIZE * 0.2
-            cam_x -= self.player_dx
+            self.cam_x -= self.player_dx
         if self.x < - 2:
             self.x = - 2
         if self.x > WINDOW_SIZE - 6:
             self.x = WINDOW_SIZE - 6
-        return cam_x, cam_y
 
 
     def player_sprite(self):
@@ -309,9 +338,16 @@ class Player:
             if self.nb_shoot >= len(self.shoot_liste) - 1:
                 self.nb_shoot = 0
                 self.shoot = False
+                self.first_bullet = True
             else:
                 self.nb_shoot += 0.1
             self.sprite = self.shoot_liste[int(self.nb_shoot)]
+
+
+    def end_level(self):
+        self.x = 4
+        self.y = 90
+        self.menu = True
 
 
     def update(self, cam_x, cam_y):
@@ -331,7 +367,8 @@ class Player:
         #actualisation position joueur
         self.x += self.player_dx
         self.y += self.player_dy
-        cam_x, cam_y = self.cam_position(cam_x, cam_y)
+        self.cam_x, self.cam_y = cam_x, cam_y
+        self.cam_position()
         #actualisation force saut et chute
         self.player_dy = min(self.player_dy + self.gravity, 8)
         #actualisation des colisions
@@ -341,12 +378,22 @@ class Player:
         self.key_detection()
         # actualisation force deplacement gauche droite
         self.player_dx = max(self.player_dx - 1, 0)
-        return cam_x, cam_y
+        # actualisation des bullets
+        i = 0
+        for bullet in self.tire_ls:
+            bullet.trajectoire()
+            if self.tire_ls[i].x < -100 or self.tire_ls[i].x > 1000:
+                self.tire_ls.pop(i)
+            i += 1
+        return self.cam_x, self.cam_y
 
 
     def draw(self):
         """ affichage du joueur """
         pyxel.blt(self.x, self.y, 0, self.sprite[0], self.sprite[1], 8 * self.dir, 8, 0)
+        # affichage des balle du joueur
+        for bullet in self.tire_ls:
+            bullet.draw()
 
 
 class Map:
@@ -374,7 +421,7 @@ class Map:
             for lvl in TEXT_LVL:
                 pyxel.text(lvl['x'] + self.cam_x, lvl['y'] + self.cam_y, lvl["txt"], 7)
 
-    
+
     def draw_level(self):
         """ affichage du level """
         pyxel.bltm(self.cam_x, self.cam_y, 0, \
@@ -382,13 +429,10 @@ class Map:
                 LVL_SIZE[self.level - 1]['lenght'], LVL_SIZE[self.level - 1]['height'], 0)
 
 
-
     def update(self, menu, level):
         """ actualisation de la map """
-        if self.menu:
-            self.menu = menu
-        if self.level == 0:
-            self.level = level
+        self.menu = menu
+        self.level = level
 
 
     def draw(self):
@@ -417,8 +461,8 @@ class Jeu:
         self.p = player
         self.map = Map()
         self.menu = True
-        self.level = 0
         self.enter_level = True
+        self.end_level = False
         pyxel.run(self.update, self.draw)
 
 
@@ -426,13 +470,28 @@ class Jeu:
         """ actualisation des elements du jeu """
         # actualisation du joueur et de la position de la camera
         self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y)
+        # fin d'un level
+        if self.p.win_level:
+            self.end_level = True
+        if self.p.menu:
+            self.menu = True
+        else:
+            self.menu = False
         # actualisation de la map
         self.map.update(self.p.menu, self.p.level)
         # actualisation entrer dans un level
-        if self.level != 0 and self.menu != True and self.enter_level:
+        if self.p.level != 0 and self.menu != True and self.enter_level:
+            self.map.cam_x = 0
+            self.map.cam_y = 0
             self.enter_level = False
-            self.p.x = LVL_SIZE[self.level - 1]['player_pos'][0]
-            self.p.y = LVL_SIZE[self.level - 1]['player_pos'][1]
+            self.p.x = LVL_SIZE[self.p.level - 1]['player_pos'][0]
+            self.p.y = LVL_SIZE[self.p.level - 1]['player_pos'][1]
+        if self.end_level:
+            self.end_level = False
+            self.menu = True
+            self.p.end_level()
+            self.map.cam_x, self.map.cam_y = 0, 0
+            self.enter_level = True
 
 
     def draw(self):
