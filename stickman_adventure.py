@@ -15,6 +15,8 @@ TODO:
 - creation music et effets musicals
 - joueur meur par dega chute
 - joueur meur par Bullete ennemies
+- bloc floor qui se casse
+- initialisation level (bloc casse, ennemies ...)
 ...
 """
 
@@ -216,8 +218,8 @@ class Player:
 
     def menu_door_detection(self):
         """ détecte si le joueur est en face d'une porte de niveau """
-        for x in range(int(self.x / 8), int((self.x + 8) / 8)):
-            for y in range(int(self.y / 8), int((self.y + 8) / 8)):
+        for x in range(int((self.x - self.cam_x)/ 8), int((self.x + 8 - self.cam_x) / 8)):
+            for y in range(int((self.y - self.cam_y) / 8), int((self.y + 8 - self.cam_y) / 8)):
                 if get_tile(x, y) in DOOR_TILE:
                     self.on_door = True
                     for lvl in TEXT_LVL:
