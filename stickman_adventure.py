@@ -10,14 +10,12 @@ import pyxel
 
 """
 TODO:
-- ennemies (attaque, affichage, update ...)
 - documentation
 - creation music et effets musicals
-- joueur meur par dega chute
-- joueur meur par Bullete ennemies
+- joueur meur par Bullet ennemies
 - bloc floor qui se casse
-- initialisation level (bloc casse, ennemies ...)
-...
+- initialisation level (bloc cassé)
+- bouton mute music
 """
 
 # Constantes
@@ -31,21 +29,24 @@ LVL_SIZE = [{
     'height': int(16 * 8),
     'x': 0,
     'y': int(48 * 8),
-    'player_pos': (4, int(14 * 8))
+    'player_pos': (4, int(14 * 8)),
+    'enemie_pos': [[115, 70], [1, 35]]
 }, {
     'lvl': 2,
     'lenght': int(16 * 8),
     'height': int(16 * 8),
     'x': 0,
     'y': int(48 * 8),
-    'player_pos': (4, int(14 * 8))
+    'player_pos': (4, int(14 * 8)),
+    'enemie_pos': [[115, 70], [1, 35]]
 }, {
     'lvl': 3,
     'lenght': int(16 * 8),
     'height': int(16 * 8),
     'x': 0,
     'y': int(48 * 8),
-    'player_pos': (4, int(14 * 8))
+    'player_pos': (4, int(14 * 8)),
+    'enemie_pos': [[115, 70], [1, 35]]
 }]
 KEY_TILE = (6, 1)
 DOOR_TILE = [(0, 1), (1, 1)]
@@ -54,6 +55,10 @@ PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
     "shoot": [[8, 8], [8, 0], [0, 0]]
+}
+ENEMIE_SPRITE = {
+    'shoot': [[16, 16], [8, 16]],
+    'idle': [0, 16]
 }
 TEXT_LVL = [{
     "x": (2 * 8) + 3,
@@ -75,9 +80,19 @@ def get_tile(tile_x, tile_y):
     return pyxel.tilemap(0).pget(tile_x, tile_y)
 
 
+def cleanup_list(list):
+    i = 0
+    while i < len(list):
+        elem = list[i]
+        if elem.is_alive:
+            i += 1
+        else:
+            list.pop(i)
+    return list
+
+
 class Bullet:
-    def __init__(self, x, y, dx=5, dy=0):
-        self.dir = dir
+    def __init__(self, x, y, dx, dy=0):
         self.dx = dx
         self.dy = dy
         self.x = x
@@ -91,7 +106,7 @@ class Bullet:
 
 
     def draw(self):
-        pyxel.rect(self.x, self.y, 1, 1, 8)
+        pyxel.rect(self.x, self.y, 1, 1, 9)
 
 
 class Player:
@@ -140,11 +155,12 @@ class Player:
         self.menu = True
         self.level = 0
         self.vie = True
+        self.fall = False
         self.win_level = False
         self.cam_x = 0
         self.cam_y = 0
         # tire
-        self.tire_ls = []
+        self.bullet_ls = []
         self.first_bullet = True
 
 
@@ -183,7 +199,7 @@ class Player:
                 x = self.x + 2
             if int(self.nb_shoot) == 0 and self.first_bullet:
                 self.first_bullet = False
-                self.tire_ls.append(Bullet(x, self.y + 1))
+                self.bullet_ls.append(Bullet(x, self.y + 1, 2 * self.dir, 0))
 
 
     def floor_detection(self):
@@ -380,12 +396,17 @@ class Player:
         # actualisation force deplacement gauche droite
         self.player_dx = max(self.player_dx - 1, 0)
         # actualisation des bullets
-        i = 0
-        for bullet in self.tire_ls:
+        for bullet in self.bullet_ls:
             bullet.trajectoire()
-            if (self.tire_ls[i].x < -100 or self.tire_ls[i].x > 1000) or self.tire_ls[i].is_alive != True:
-                self.tire_ls.pop(i)
-            i += 1
+            if (bullet.x < -20 or bullet.x > 200):
+                bullet.is_alive = False
+        # suppresion des bullet inutile
+        self.bullet_ls = cleanup_list(self.bullet_ls)
+        if self.player_dy >= 6:
+            self.fall = True
+        if self.fall and self.on_floor:
+            self.vie = False
+            self.fall = False
         return self.cam_x, self.cam_y
 
 
@@ -393,7 +414,7 @@ class Player:
         """ affichage du joueur """
         pyxel.blt(self.x, self.y, 0, self.sprite[0], self.sprite[1], 8 * self.dir, 8, 0)
         # affichage des balle du joueur
-        for bullet in self.tire_ls:
+        for bullet in self.bullet_ls:
             bullet.draw()
 
 
@@ -420,7 +441,7 @@ class Ennemie:
         self.cam_x = 0
         self.cam_y = 0
         # tire
-        self.tire_ls = []
+        self.bullet_ls = []
         self.sprite = []
         self.first_bullet = True
     
@@ -436,7 +457,7 @@ class Ennemie:
                 self.nb_shoot += 0.1
             self.sprite = self.shoot_liste[int(self.nb_shoot)]
         else:
-            self.sprite = [0, 0]
+            self.sprite = self.sprite_ls['idle']
 
 
     def deplacement(self):
@@ -469,7 +490,11 @@ class Ennemie:
             dx = player_x - self.x
             dy = player_y - self.y
             sq_dist = dx * dx + dy * dy
-            if sq_dist < 60**2:
+            if sq_dist < 40**2 and dy < 15:
+                try:
+                    self.dir = int(dx / abs(dx))
+                except:
+                    pass
                 dist = pyxel.sqrt(sq_dist)
                 self.shoot = True
                 if self.dir == 1:
@@ -478,22 +503,21 @@ class Ennemie:
                     x = self.x + 2
                 if int(self.nb_shoot) == 0 and self.first_bullet:
                     self.first_bullet = False
-                    self.tire_ls.append(Bullet(x, self.y + 1, dx / dist, dy / dist))
-                self.time_to_fire = 60
+                    self.bullet_ls.append(Bullet(x, self.y + 1, (dx / dist) * 2, (dy / dist) * 2))
+                self.time_to_fire = 70
         self.player_sprite()
-        i = 0
-        for bullet in self.tire_ls:
+        for bullet in self.bullet_ls:
             bullet.trajectoire()
-            if (self.tire_ls[i].x < -100 or self.tire_ls[i].x > 1000) or self.tire_ls[i].is_alive != True:
-                self.tire_ls.pop(i)
-            i += 1
+            if bullet.x < -100 or bullet.x > 1000:
+                bullet.is_alive = False
+        self.bullet_ls = cleanup_list(self.bullet_ls)
 
 
     def draw(self):
         """ affichage du joueur """
         pyxel.blt(self.x, self.y, 0, self.sprite[0], self.sprite[1], 8 * self.dir, 8, 0)
         # affichage des balle du joueur
-        for bullet in self.tire_ls:
+        for bullet in self.bullet_ls:
             bullet.draw()
 
 
@@ -567,19 +591,24 @@ class Jeu:
         self.enemies = []
         pyxel.run(self.update, self.draw)
 
-    # a voire
+
     def spawn_enemy(self):
-        for x in range(LVL_SIZE[self.p.level - 1]['x'], LVL_SIZE[self.p.level - 1]['x'] + LVL_SIZE[self.p.level - 1]['lenght']):
-            for y in range(LVL_SIZE[self.p.level - 1]['y'], LVL_SIZE[self.p.level - 1]['y'] + LVL_SIZE[self.p.level - 1]['height']):
-                tile = get_tile(x / 8, y / 8)
-                if tile == ENEMIE_TILE:
-                    self.enemies.append(Ennemie(x * 8, y * 8, self.p.sprite_ls, self.p.level))
+        for x, y in LVL_SIZE[self.p.level - 1]['enemie_pos']:
+            self.enemies.append(Ennemie(x, y, ENEMIE_SPRITE, self.p.level))
+
+
+    def player_bullet_detection(self):
+        for bullet in self.p.bullet_ls:
+            for enemie in self.enemies:
+                if abs(bullet.x - enemie.x) < 3 and abs(bullet.y - enemie.y) < 8:
+                    enemie.is_alive = False
 
 
     def update(self):
         """ actualisation des elements du jeu """
         # actualisation du joueur et de la position de la camera
         self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y)
+        self.player_bullet_detection()
         # fin d'un level
         if self.p.win_level:
             self.end_level = True
@@ -590,7 +619,11 @@ class Jeu:
         # actualisation de la map
         self.map.update(self.p.menu, self.p.level)
         # actualisation entrer dans un level
+        if self.p.vie != True:
+            self.enter_level = True
+            self.p.vie = True
         if self.p.level != 0 and self.menu != True and self.enter_level:
+            self.enemies = []
             self.map.cam_x = 0
             self.map.cam_y = 0
             self.enter_level = False
@@ -603,9 +636,11 @@ class Jeu:
             self.p.end_level()
             self.map.cam_x, self.map.cam_y = 0, 0
             self.enter_level = True
+            self.enemies = []
         # update enemies
         for enemie in self.enemies:
             enemie.update(self.p.x, self.p.y)
+        self.enemies = cleanup_list(self.enemies)
 
 
     def draw(self):
