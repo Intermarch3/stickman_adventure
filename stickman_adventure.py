@@ -11,8 +11,8 @@ import pyxel
 """
 TODO:
 - documentation
+- faire cam_y dans cam_position()
 - creation music et effets musicals
-- joueur meur par Bullet ennemies
 - bloc floor qui se casse
 - initialisation level (bloc cassé)
 - bouton mute music
@@ -503,7 +503,7 @@ class Ennemie:
                     x = self.x + 2
                 if int(self.nb_shoot) == 0 and self.first_bullet:
                     self.first_bullet = False
-                    self.bullet_ls.append(Bullet(x, self.y + 1, (dx / dist) * 2, (dy / dist) * 2))
+                    self.bullet_ls.append(Bullet(x, self.y + 1, (dx / dist) * 1.5, (dy / dist) * 1.5))
                 self.time_to_fire = 70
         self.player_sprite()
         for bullet in self.bullet_ls:
@@ -604,11 +604,19 @@ class Jeu:
                     enemie.is_alive = False
 
 
+    def enemie_bullet_detection(self):
+        for enemie in self.enemies:
+            for bullet in enemie.bullet_ls:
+                if abs(bullet.x - self.p.x) < 3 and abs(bullet.y - self.p.y) < 6:
+                    self.p.vie = False
+
+
     def update(self):
         """ actualisation des elements du jeu """
+        self.player_bullet_detection()
+        self.enemie_bullet_detection()
         # actualisation du joueur et de la position de la camera
         self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y)
-        self.player_bullet_detection()
         # fin d'un level
         if self.p.win_level:
             self.end_level = True
