@@ -11,8 +11,9 @@ import pyxel
 """
 TODO:
 - documentation
-- creation music et effets musicals
-- bouton mute music
+- bonus: 
+    - music  et ecran victoire derniere clee
+    - music shoot
 """
 
 # Constantes
@@ -37,7 +38,7 @@ LVL_SIZE = [{
     'x': int(24 * 8),
     'y': int(48 * 8),
     'player_pos': (int(4), int(14 * 8)),
-    'enemie_pos': [[2, 72], [119, 112], [18, 32]],
+    'enemie_pos': [[2, 72], [119, 112], [18, 32], [62, 32]],
     'breakeable_bloc': []
 }, {
     'lvl': 3,
@@ -164,6 +165,7 @@ class Player:
         self.cam_y = 0
         self.breaking_bloc = []
         self.nb_break_bloc = 0
+        self.mute = False
         # txt
         self.help_txt = ""
         self.warn_txt = ""
@@ -320,12 +322,12 @@ class Player:
 
     def warn(self, txt):
         self.warn_txt = txt
-        self.warn_txt_time = 80
+        self.warn_txt_time = 50
     
 
     def help(self, txt):
         self.help_txt = txt
-        self.help_txt_time = 80
+        self.help_txt_time = 50
 
 
     def wall_detection(self):
@@ -428,8 +430,10 @@ class Player:
         self.x = 4
         self.y = 90
         self.menu = True
+        self.help_txt = ""
+        self.help_txt_time = 0
 
-    
+
     def reset_txt(self):
         self.help_txt = ""
         self.warn_txt = ""
@@ -437,13 +441,14 @@ class Player:
         self.help_txt_time = 0
 
 
-    def update(self, cam_x, cam_y):
+    def update(self, cam_x, cam_y, mute):
         """ 
         actualisation des valeurs et affichage joueur 
         retourne:
             - cam_x: position de la camera en x
             - cam_y: position de la camera en y
         """
+        self.mute = mute
         # txt actualisation
         self.update_warn_txt()
         self.update_help_txt()
@@ -481,6 +486,8 @@ class Player:
         if self.fall and self.on_floor:
             self.vie = False
             self.fall = False
+        if self.menu != True:
+            self.help("Bullet:" + str(self.nb_bullet))
         return self.cam_x, self.cam_y
 
 
@@ -665,6 +672,9 @@ class Jeu:
         self.first_enter_level = [True, True, True]
         self.help_txt_pos = [3, 3]
         self.warn_txt_pos = [3, 10]
+        self.mute = False
+        self.time_mute = 15
+        pyxel.playm(0, loop=True)
         pyxel.run(self.update, self.draw)
 
 
@@ -677,6 +687,8 @@ class Jeu:
         for bullet in self.p.bullet_ls:
             for enemie in self.enemies:
                 if abs(bullet.x - (enemie.x + 3)) < 3 and abs(bullet.y - (enemie.y + 3)) < 4:
+                    if not self.mute:
+                        pyxel.play(3, 10)
                     enemie.is_alive = False
                     bullet.is_alive = False
 
@@ -713,6 +725,18 @@ class Jeu:
 
     def update(self):
         """ actualisation des elements du jeu """
+        # actualisation son et music
+        self.time_mute -= 1
+        if self.time_mute < 0:
+            if pyxel.btn(pyxel.KEY_M) and self.mute:
+                self.mute = False
+                pyxel.playm(0, loop=True)
+                self.time_mute = 15
+            elif pyxel.btn(pyxel.KEY_M) and not self.mute:
+                self.mute = True
+                self.time_mute = 15
+        if self.mute:
+            pyxel.stop()
         # bullet detection
         self.player_bullet_detection()
         self.enemie_bullet_detection()
@@ -721,7 +745,7 @@ class Jeu:
         self.p.nb_break_bloc >= len(LVL_SIZE[self.p.level - 1]['breakeable_bloc']):
             self.p.help("[R] to reset lvl")
         # actualisation du joueur et de la position de la camera
-        self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y)
+        self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y, self.mute)
         # fin d'un level
         if self.p.win_level:
             self.end_level = True
@@ -738,8 +762,10 @@ class Jeu:
             self.p.breaking_bloc = []
             self.p.bullet_ls = []
             self.p.nb_break_bloc = 0
+            if not self.mute:
+                pyxel.play(3, 9)
         if self.p.level != 0 and self.menu != True and self.enter_level:
-            self.p.nb_bullet = len(LVL_SIZE[self.p.level - 1]['enemie_pos']) + 3
+            self.p.nb_bullet = len(LVL_SIZE[self.p.level - 1]['enemie_pos']) + 2
             self.p.reset_txt()
             if self.first_enter_level[self.p.level - 1]:
                 self.get_break_bloc()
@@ -783,7 +809,7 @@ class Jeu:
 
 if __name__ == '__main__':
     # initialisation fenetre
-    pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "STICKMAN ADVENTURE 2D")
+    pyxel.init(WINDOW_SIZE, WINDOW_SIZE, "| STICKMAN ADVENTURE 2D |")
     pyxel.mouse(False)
     # importation map, sprite, music
     pyxel.load("stickman_adventure.pyxres")
