@@ -13,14 +13,16 @@ TODO:
 - documentation
 - faire cam_y dans cam_position()
 - creation music et effets musicals
-- bloc floor qui se casse
-- initialisation level (bloc cassé)
 - bouton mute music
+- bloc qui se casse quand marche dessus
+- ennemie level 3
+- acces level si clee
+- aide text (press [down] btn to enter level ...)
 """
 
 # Constantes
-TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (8, 0), (9, 0), (8, 1), (8, 2), (8, 3), (9, 1), (9, 2), (9, 3), (9, 4)]
-TILE_WALL = [(4, 3), (8, 1), (8, 2), (8, 3), (9, 1), (9, 2), (9, 3), (9, 4)]
+TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (5, 2), (6, 2)]
+TILE_WALL = [(4, 3), (5, 2), (6, 2)]
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
 LVL_SIZE = [{
@@ -35,22 +37,22 @@ LVL_SIZE = [{
     'lvl': 2,
     'lenght': int(16 * 8),
     'height': int(16 * 8),
-    'x': 0,
+    'x': int(24 * 8),
     'y': int(48 * 8),
-    'player_pos': (4, int(14 * 8)),
-    'enemie_pos': [[115, 70], [1, 35]]
+    'player_pos': (int(4), int(14 * 8)),
+    'enemie_pos': [[2, 72], [119, 112], [18, 32]]
 }, {
     'lvl': 3,
     'lenght': int(16 * 8),
     'height': int(16 * 8),
-    'x': 0,
+    'x': int(48 * 8),
     'y': int(48 * 8),
     'player_pos': (4, int(14 * 8)),
-    'enemie_pos': [[115, 70], [1, 35]]
+    'enemie_pos': []
 }]
 KEY_TILE = (6, 1)
 DOOR_TILE = [(0, 1), (1, 1)]
-ENEMIE_TILE = [16, 16]
+TRAMPO_TILE = (5, 2)
 PLAYER_SPRITE = {
     "walk": [[0, 0], [16, 0], [24, 0], [16, 8], [24, 8], [24, 0], [0, 0]],
     "jump": [[32, 0], [40, 0], [32, 0], [0, 0]],
@@ -132,7 +134,7 @@ class Player:
         self.dir = 1
         # attributs de force (vitesse, graviter, ...)
         self.speed = 0.5
-        self.jump_force = 3.2
+        self.jump_force = 3.5
         self.player_dy = 0
         self.player_dx = 0
         # attributs des sprites
@@ -200,6 +202,8 @@ class Player:
             if int(self.nb_shoot) == 0 and self.first_bullet:
                 self.first_bullet = False
                 self.bullet_ls.append(Bullet(x, self.y + 1, 2 * self.dir, 0))
+        if pyxel.btn(pyxel.KEY_X):
+            print(self.x, self.y)
 
 
     def floor_detection(self):
@@ -209,7 +213,7 @@ class Player:
             y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
             y = self.y - self.cam_y
-        if self.level != 0:
+        if self.level != 0 and self.menu != True:
             x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
             x = self.x - self.cam_x
@@ -221,12 +225,15 @@ class Player:
             right = 3
         # detection du sol
         for xi in range(int(x + right), int(x + 8 + left)):
+            if get_tile(int(xi / 8), int((y + 8) / 8)) == TRAMPO_TILE:
+                        self.player_dy = -7
+                        self.on_floor = False
+                        break
             if self.player_dy > 0:
                 if get_tile(int(xi / 8), int((y + 8) / 8)) in TILE_FLOOR:
                     self.on_floor = True
                     self.player_dy = 0
                     self.y = int(self.y / 8) * 8
-                    break
                 else:
                     self.on_floor = False
 
@@ -602,12 +609,13 @@ class Jeu:
             for enemie in self.enemies:
                 if abs(bullet.x - enemie.x) < 3 and abs(bullet.y - enemie.y) < 8:
                     enemie.is_alive = False
+                    bullet.is_alive = False
 
 
     def enemie_bullet_detection(self):
         for enemie in self.enemies:
             for bullet in enemie.bullet_ls:
-                if abs(bullet.x - self.p.x) < 3 and abs(bullet.y - self.p.y) < 6:
+                if abs(bullet.x - (self.p.x + 3)) < 3 and abs(bullet.y - (self.p.y + 4)) < 4:
                     self.p.vie = False
 
 
