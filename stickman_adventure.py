@@ -23,6 +23,7 @@ TODO:
 # Constantes
 TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (5, 2), (6, 2)]
 TILE_WALL = [(4, 3), (5, 2), (6, 2)]
+BREAK_BLOC_TILE = (6, 2)
 WINDOW_SIZE = 128
 HOME_LENGHT = int(23 * 8)
 LVL_SIZE = [{
@@ -32,7 +33,8 @@ LVL_SIZE = [{
     'x': 0,
     'y': int(48 * 8),
     'player_pos': (4, int(14 * 8)),
-    'enemie_pos': [[115, 70], [1, 35]]
+    'enemie_pos': [[115, 70], [1, 35]],
+    'breakeable_bloc': []
 }, {
     'lvl': 2,
     'lenght': int(16 * 8),
@@ -40,7 +42,8 @@ LVL_SIZE = [{
     'x': int(24 * 8),
     'y': int(48 * 8),
     'player_pos': (int(4), int(14 * 8)),
-    'enemie_pos': [[2, 72], [119, 112], [18, 32]]
+    'enemie_pos': [[2, 72], [119, 112], [18, 32]],
+    'breakeable_bloc': []
 }, {
     'lvl': 3,
     'lenght': int(16 * 8),
@@ -48,7 +51,8 @@ LVL_SIZE = [{
     'x': int(48 * 8),
     'y': int(48 * 8),
     'player_pos': (4, int(14 * 8)),
-    'enemie_pos': []
+    'enemie_pos': [[112, 112], [88, 80], [2, 48], [59, 56], [56, 32], [86, 16]],
+    'breakeable_bloc': []
 }]
 KEY_TILE = (6, 1)
 DOOR_TILE = [(0, 1), (1, 1)]
@@ -161,6 +165,7 @@ class Player:
         self.win_level = False
         self.cam_x = 0
         self.cam_y = 0
+        self.breaking_bloc = []
         # tire
         self.bullet_ls = []
         self.first_bullet = True
@@ -202,8 +207,8 @@ class Player:
             if int(self.nb_shoot) == 0 and self.first_bullet:
                 self.first_bullet = False
                 self.bullet_ls.append(Bullet(x, self.y + 1, 2 * self.dir, 0))
-        if pyxel.btn(pyxel.KEY_X):
-            print(self.x, self.y)
+        if pyxel.btn(pyxel.KEY_R) and self.menu == False:
+            self.vie = False
 
 
     def floor_detection(self):
@@ -234,6 +239,8 @@ class Player:
                     self.on_floor = True
                     self.player_dy = 0
                     self.y = int(self.y / 8) * 8
+                    if get_tile(int(xi / 8), int((y + 8) / 8)) == BREAK_BLOC_TILE:
+                        self.breaking_bloc.append([int(x / 8), int((y + 8) / 8), 30])
                 else:
                     self.on_floor = False
 
@@ -270,6 +277,17 @@ class Player:
                             break
                 else:
                     self.win_level = False
+
+
+    def break_bloc(self):
+        i = 0
+        for bloc in self.breaking_bloc:
+            if bloc[2] > 0:
+                bloc[2] = bloc[2] - 1
+            else:
+                pyxel.tilemap(0).pset(bloc[0], bloc[1], (6, 3))
+                self.breaking_bloc.pop(i)
+            i += 1
 
 
     def wall_detection(self):
@@ -400,6 +418,7 @@ class Player:
         self.wall_detection()
         self.roof_detection()
         self.key_detection()
+        self.break_bloc()
         # actualisation force deplacement gauche droite
         self.player_dx = max(self.player_dx - 1, 0)
         # actualisation des bullets
@@ -596,6 +615,7 @@ class Jeu:
         self.enter_level = True
         self.end_level = False
         self.enemies = []
+        self.first_enter_level = [True, True, True]
         pyxel.run(self.update, self.draw)
 
 
@@ -618,6 +638,21 @@ class Jeu:
                 if abs(bullet.x - (self.p.x + 3)) < 3 and abs(bullet.y - (self.p.y + 4)) < 4:
                     self.p.vie = False
 
+    
+    def get_break_bloc(self):
+        global LVL_SIZE
+        x = LVL_SIZE[self.p.level - 1]['lenght'] + LVL_SIZE[self.p.level - 1]['x']
+        y = LVL_SIZE[self.p.level - 1]['height'] + LVL_SIZE[self.p.level - 1]['y']
+        for xi in range(LVL_SIZE[self.p.level - 1]['x'], x):
+            for yi in range(LVL_SIZE[self.p.level - 1]['y'], y):
+                if get_tile(int(xi / 8), int(yi / 8)) == BREAK_BLOC_TILE:
+                    LVL_SIZE[self.p.level - 1]['breakeable_bloc'].append([int(xi / 8), int(yi / 8)])
+
+
+    def set_break_bloc(self):
+        for bloc in LVL_SIZE[self.p.level - 1]['breakeable_bloc']:
+            pyxel.tilemap(0).pset(bloc[0], bloc[1], BREAK_BLOC_TILE)
+
 
     def update(self):
         """ actualisation des elements du jeu """
@@ -638,10 +673,16 @@ class Jeu:
         if self.p.vie != True:
             self.enter_level = True
             self.p.vie = True
+            self.p.breaking_bloc = []
+            self.p.bullet_ls = []
         if self.p.level != 0 and self.menu != True and self.enter_level:
+            if self.first_enter_level[self.p.level - 1]:
+                self.get_break_bloc()
+                self.first_enter_level[self.p.level - 1] = False
             self.enemies = []
             self.map.cam_x = 0
             self.map.cam_y = 0
+            self.set_break_bloc()
             self.enter_level = False
             self.p.x = LVL_SIZE[self.p.level - 1]['player_pos'][0]
             self.p.y = LVL_SIZE[self.p.level - 1]['player_pos'][1]
