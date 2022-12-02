@@ -16,7 +16,7 @@ TODO:
     - music shoot
 """
 
-# Constantes
+# Constantes variables
 TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (5, 2), (6, 2)]
 TILE_WALL = [(4, 3), (5, 2), (6, 2)]
 BREAK_BLOC_TILE = (6, 2)
@@ -78,11 +78,25 @@ TEXT_LVL = [{
 
 
 def get_tile(tile_x, tile_y):
-    """ Récupere la Title aux coordonné donné """
+    """ 
+    Récupere la Title aux coordonné donné 
+    args:
+        tile_x (int): coordonné x de la tile
+        tile_y (int): coordonné y de la tile
+    return:
+        (int, int): coordonné de la tile dans le tileset
+    """
     return pyxel.tilemap(0).pget(tile_x, tile_y)
 
 
 def cleanup_list(list):
+    """
+    netttoie une liste en supprimant les elements a detruire
+    args:
+        list (list): liste a nettoyer
+    return:
+        (list): liste nettoyé
+    """
     i = 0
     while i < len(list):
         elem = list[i]
@@ -94,7 +108,20 @@ def cleanup_list(list):
 
 
 class Bullet:
+    """
+    class qui represente une balle tiré par un joueur ou ennemie
+    parametres:
+        x (int): coordonné x de la balle
+        y (int): coordonné y de la balle
+        dx (int): vitesse de deplacement de la balle sur l'axe x
+        dy (int): vitesse de deplacement de la balle sur l'axe y
+    methodes:
+        trajectoire(): deplace la balle (actualise sa position)
+        draw(): affiche la balle
+
+    """
     def __init__(self, x, y, dx, dy=0):
+        """ initialise les attributs de la classe """
         self.dx = dx
         self.dy = dy
         self.x = x
@@ -103,11 +130,13 @@ class Bullet:
 
 
     def trajectoire(self):
+        """ deplace la balle (actualise sa position) """
         self.x += self.dx
         self.y += self.dy
 
 
     def draw(self):
+        """ affiche la balle """
         pyxel.rect(self.x, self.y, 1, 1, 9)
 
 
@@ -123,7 +152,19 @@ class Player:
         update(): actualise les valeurs (position, direction ...)
         draw(): affiche le joueur
         floor_detection(): detecte si le joueur touche le sol
-    
+        menu_door_detection(): detecte si le joueur touche la porte d'un level
+        key_detection(): detecte si le joueur touche une clef
+        break_bloc(): detruit un bloc cassable
+        update_help_txt(): actualise le texte d'aide
+        update_warn_txt(): actualise le texte d'avertissement
+        warn(): affiche un texte d'avertissement
+        help(): affiche un texte d'aide
+        wall_detection(): detecte si le joueur touche un mur
+        roof_detection(): detecte si le joueur touche le plafond
+        cam_position(): actualise la position de la camera
+        player_sprite(): actualise le sprite du joueur
+        end_level(): gere la fin d'un level
+        reset_txt(): remet a zero les textes d'aide et d'avertissement
     """
     def __init__(self, sprite_ls):
         """ initialisation des attributs """
@@ -153,6 +194,8 @@ class Player:
         self.nb_shoot = 0
         self.shoot = False
         self.nb_bullet = 100
+        self.bullet_ls = []
+        self.first_bullet = True
         # autre
         self.on_door = False
         self.menu = True
@@ -171,9 +214,6 @@ class Player:
         self.warn_txt = ""
         self.help_txt_time = 0
         self.warn_txt_time = 0
-        # tire
-        self.bullet_ls = []
-        self.first_bullet = True
 
 
     def deplacement(self):
@@ -220,6 +260,7 @@ class Player:
                     self.bullet_ls.append(Bullet(x, self.y + 1, 2 * self.dir, 0))
                 else:
                     self.warn("No bullet [R] to reset")
+        # reset
         if pyxel.btn(pyxel.KEY_R) and self.menu == False:
             self.vie = False
 
@@ -283,6 +324,7 @@ class Player:
             x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         else:
             x = self.x - self.cam_x
+        # detection de la clee
         for xi in range(int(x), int(x + 8)):
             for yi in range(int(y), int(y + 8)):
                 if get_tile(int(xi / 8), int(yi / 8)) == KEY_TILE:
@@ -295,6 +337,7 @@ class Player:
 
 
     def break_bloc(self):
+        """ casse les blocs cassable ou actualise le temps de casse """
         i = 0
         for bloc in self.breaking_bloc:
             if bloc[2] > 0:
@@ -307,6 +350,7 @@ class Player:
 
 
     def update_help_txt(self):
+        """ actualise le texte d'aide """
         if self.help_txt_time > 0:
             self.help_txt_time -= 1
         elif self.help_txt_time <= 0 and self.help_txt != "":
@@ -314,6 +358,7 @@ class Player:
 
 
     def update_warn_txt(self):
+        """ actualise le texte d'alerte """
         if self.warn_txt_time > 0:
             self.warn_txt_time -= 1
         elif self.warn_txt_time <= 0 and self.warn_txt != "":
@@ -321,11 +366,13 @@ class Player:
 
 
     def warn(self, txt):
+        """ affiche un texte d'alerte """
         self.warn_txt = txt
         self.warn_txt_time = 50
     
 
     def help(self, txt):
+        """ affiche un texte d'aide """
         self.help_txt = txt
         self.help_txt_time = 50
 
@@ -359,6 +406,7 @@ class Player:
 
     def roof_detection(self):
         """ detecte si le joueur tape sur un bloc par le haut """
+        # ajustement des coordonne en fonction du level
         if self.level != 0 and self.menu != True:
             y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         else:
@@ -389,6 +437,7 @@ class Player:
             lenght = HOME_LENGHT
         else:
             lenght = LVL_SIZE[self.level - 1]['lenght'] - 8
+        # actualisation de la position de la caméra en x
         if self.x > WINDOW_SIZE * 0.8 and 17 + self.x - self.cam_x < lenght:
             self.x = WINDOW_SIZE * 0.8
             self.cam_x -= self.player_dx
@@ -427,6 +476,7 @@ class Player:
 
 
     def end_level(self):
+        """ reset valeur a la fin du level """
         self.x = 4
         self.y = 90
         self.menu = True
@@ -435,6 +485,7 @@ class Player:
 
 
     def reset_txt(self):
+        """ reset les textes """
         self.help_txt = ""
         self.warn_txt = ""
         self.warn_txt_time = 0
@@ -443,7 +494,11 @@ class Player:
 
     def update(self, cam_x, cam_y, mute):
         """ 
-        actualisation des valeurs et affichage joueur 
+        actualisation des valeurs du joueur
+        args:
+            cam_x (int): position de la caméra en x
+            cam_y (int): position de la caméra en y
+            mute (bool): si le son est activer/desactiver
         retourne:
             - cam_x: position de la camera en x
             - cam_y: position de la camera en y
@@ -486,6 +541,7 @@ class Player:
         if self.fall and self.on_floor:
             self.vie = False
             self.fall = False
+        # actualisation nombre balle restante pour l'affichage
         if self.menu != True:
             self.help("Bullet:" + str(self.nb_bullet))
         return self.cam_x, self.cam_y
@@ -500,16 +556,27 @@ class Player:
 
 
 class Ennemie:
-    """ ennemie class """
+    """ 
+    ennemie class 
+    attributs:
+        x (int): position en x
+        y (int): position en y
+        sprite_ls (list): liste de sprite de l'ennemie
+        level (int): niveau ou se trouve l'ennemie
+    methodes:
+        update(): actualisation des valeurs de l'ennemie
+        draw(): affichage de l'ennemie
+        deplacement(): deplacement et collision de l'ennemie sur l'axe y
+        player_sprite(): actualisation des sprite de l'ennemie
+    """
     def __init__(self, x, y, sprite_ls, level):
+        """ initialisation des valeurs de l'ennemie """
+        # attributs de position
         self.x = x
         self.y = y
-        self.time_to_fire = 0
-        self.is_alive = True
         self.dir = 1
-        self.gravity = 0.45
-        self.level = level
         # attributs de force (vitesse, graviter, ...)
+        self.gravity = 0.45
         self.player_dy = 0
         self.player_dx = 0
         # attributs des sprites
@@ -521,10 +588,13 @@ class Ennemie:
         # autre
         self.cam_x = 0
         self.cam_y = 0
+        self.level = level
+        self.is_alive = True
         # tire
         self.bullet_ls = []
         self.sprite = []
         self.first_bullet = True
+        self.time_to_fire = 0
 
 
     def player_sprite(self):
@@ -542,6 +612,8 @@ class Ennemie:
 
 
     def deplacement(self):
+        """ deplacement et collision de l'ennemie sur l'axe y """
+        # changement des coordonnés en fonction du level
         y = self.y + LVL_SIZE[self.level - 1]['y'] - self.cam_y
         x = self.x + LVL_SIZE[self.level - 1]['x'] - self.cam_x
         # ajustement des coordonné en fonction de l'orientation
@@ -563,9 +635,12 @@ class Ennemie:
 
 
     def update(self, player_x, player_y):
+        """ actualisation des valeurs de l'ennemie """
+        # actualisation des valeurs de deplacement
         self.player_dy = min(self.player_dy + self.gravity, 8)
         self.y += self.player_dy
         self.deplacement()
+        # actualisation de la mecanique de tire
         self.time_to_fire -= 1
         if self.time_to_fire <= 0:
             dx = player_x - self.x
@@ -586,7 +661,9 @@ class Ennemie:
                     self.first_bullet = False
                     self.bullet_ls.append(Bullet(x, self.y + 1, (dx / dist) * 1.5, (dy / dist) * 1.5))
                 self.time_to_fire = 70
+        # actualisation des sprites
         self.player_sprite()
+        # actualisation des bullets
         for bullet in self.bullet_ls:
             bullet.trajectoire()
             if bullet.x < -100 or bullet.x > 1000:
@@ -603,7 +680,13 @@ class Ennemie:
 
 
 class Map:
-    """ classe pour les maps """
+    """ 
+    classe pour les maps
+    methodes:
+        draw(): affichage de la bonne map
+        draw_menu(): affichage du menu
+        draw_level(): affichage du level
+    """
     def __init__(self):
         """ 
         initialisation de la map 
@@ -620,7 +703,7 @@ class Map:
         """ affichage du menu """
         # affichage lune
         pyxel.blt(96 + self.cam_x * 0.7, 24, 2, 0, 40, 16, 16, 0)
-        # affichage de la map
+        # affichage du menu
         pyxel.bltm(self.cam_x, self.cam_y, 0, 0, 0, 256, 256, 0)
         # affichage txt level
         if self.menu:
@@ -636,7 +719,12 @@ class Map:
 
 
     def update(self, menu, level):
-        """ actualisation de la map """
+        """ 
+        actualisation de la map 
+        args:
+            menu (bool): bool pour savoir si on est dans le menu
+            level (int): level en cours
+        """
         self.menu = menu
         self.level = level
 
@@ -654,11 +742,18 @@ class Jeu:
     class Jeu qui actualise le joueur et la fenetre
     - - - - - - - - - - 
     Attributs:
-        p: le joueur (Player)
+        p (Player): une instance du joueur
     - - - - - - - - - - 
     Methode:
         update(): actualise le jeu
         draw(): affiche le jeu
+        spawn_enemy(): spawn les ennemie du niveau
+        player_bullet_detection(): detection des collision bullets du joueur sur les ennemies
+        enemy_bullet_detection(): detection des collision bullets des ennemies sur le joueur
+        get_break_bloc(): fait un inventaire des blocs cassable du niveau
+        set_break_bloc(): repositionne les bloc cassable du niveau en cours
+        display_help_txt(): affiche le text d'aide
+        display_warn_txt(): affiche le text d'avertissement
     """
     def __init__(self, player):
         """ initialisation du joueur et de la fenetre """
@@ -679,11 +774,13 @@ class Jeu:
 
 
     def spawn_enemy(self):
+        """ spawn les ennemie du niveau """
         for x, y in LVL_SIZE[self.p.level - 1]['enemie_pos']:
             self.enemies.append(Ennemie(x, y, ENEMIE_SPRITE, self.p.level))
 
 
     def player_bullet_detection(self):
+        """ detection des collision bullets du joueur sur les ennemies """
         for bullet in self.p.bullet_ls:
             for enemie in self.enemies:
                 if abs(bullet.x - (enemie.x + 3)) < 3 and abs(bullet.y - (enemie.y + 3)) < 4:
@@ -694,6 +791,7 @@ class Jeu:
 
 
     def enemie_bullet_detection(self):
+        """ detection des collision bullets des ennemies sur le joueur """
         for enemie in self.enemies:
             for bullet in enemie.bullet_ls:
                 if abs(bullet.x - (self.p.x + 3)) < 3 and abs(bullet.y - (self.p.y + 4)) < 4:
@@ -701,6 +799,7 @@ class Jeu:
 
     
     def get_break_bloc(self):
+        """ fait un inventaire des blocs cassable du niveau """
         global LVL_SIZE
         x = LVL_SIZE[self.p.level - 1]['lenght'] + LVL_SIZE[self.p.level - 1]['x']
         y = LVL_SIZE[self.p.level - 1]['height'] + LVL_SIZE[self.p.level - 1]['y']
@@ -711,15 +810,18 @@ class Jeu:
 
 
     def set_break_bloc(self):
+        """ repositionne les bloc cassable du niveau en cours """
         for bloc in LVL_SIZE[self.p.level - 1]['breakeable_bloc']:
             pyxel.tilemap(0).pset(bloc[0], bloc[1], BREAK_BLOC_TILE)
 
 
     def display_help_txt(self):
+        """ affiche le text d'aide """
         pyxel.text(self.help_txt_pos[0], self.help_txt_pos[1], self.p.help_txt, 7)
 
 
     def display_warning_txt(self):
+        """ affiche le text d'avertissement """
         pyxel.text(self.warn_txt_pos[0], self.warn_txt_pos[1], self.p.warn_txt, 8)
 
 
@@ -755,7 +857,7 @@ class Jeu:
             self.menu = False
         # actualisation de la map
         self.map.update(self.p.menu, self.p.level)
-        # actualisation entrer dans un level
+        # actualisation quand le joueur meurt
         if self.p.vie != True:
             self.enter_level = True
             self.p.vie = True
@@ -764,6 +866,7 @@ class Jeu:
             self.p.nb_break_bloc = 0
             if not self.mute:
                 pyxel.play(3, 9)
+        # actualisation entrer dans un level
         if self.p.level != 0 and self.menu != True and self.enter_level:
             self.p.nb_bullet = len(LVL_SIZE[self.p.level - 1]['enemie_pos']) + 2
             self.p.reset_txt()
@@ -778,6 +881,7 @@ class Jeu:
             self.p.x = LVL_SIZE[self.p.level - 1]['player_pos'][0]
             self.p.y = LVL_SIZE[self.p.level - 1]['player_pos'][1]
             self.spawn_enemy()
+        # actualisation fin d'un level
         if self.end_level:
             self.end_level = False
             self.menu = True
