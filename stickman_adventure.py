@@ -16,7 +16,7 @@ TODO:
     - music shoot
 """
 
-# Constantes variables
+# variables globales et constantes
 TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (5, 2), (6, 2)]
 TILE_WALL = [(4, 3), (5, 2), (6, 2)]
 BREAK_BLOC_TILE = (6, 2)
@@ -96,7 +96,7 @@ def cleanup_list(list):
         list (list): liste a nettoyer
     return:
         (list): liste nettoyé
-    """
+    """ 
     i = 0
     while i < len(list):
         elem = list[i]
@@ -827,88 +827,96 @@ class Jeu:
 
     def update(self):
         """ actualisation des elements du jeu """
-        # actualisation son et music
-        self.time_mute -= 1
-        if self.time_mute < 0:
-            if pyxel.btn(pyxel.KEY_M) and self.mute:
-                self.mute = False
-                pyxel.playm(0, loop=True)
-                self.time_mute = 15
-            elif pyxel.btn(pyxel.KEY_M) and not self.mute:
-                self.mute = True
-                self.time_mute = 15
-        if self.mute:
-            pyxel.stop()
-        # bullet detection
-        self.player_bullet_detection()
-        self.enemie_bullet_detection()
-        # help txt
-        if len(LVL_SIZE[self.p.level - 1]['breakeable_bloc']) > 0 and \
-        self.p.nb_break_bloc >= len(LVL_SIZE[self.p.level - 1]['breakeable_bloc']):
-            self.p.help("[R] to reset lvl")
-        # actualisation du joueur et de la position de la camera
-        self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y, self.mute)
-        # fin d'un level
-        if self.p.win_level:
-            self.end_level = True
-        if self.p.menu:
-            self.menu = True
-        else:
-            self.menu = False
-        # actualisation de la map
-        self.map.update(self.p.menu, self.p.level)
-        # actualisation quand le joueur meurt
-        if self.p.vie != True:
-            self.enter_level = True
-            self.p.vie = True
-            self.p.breaking_bloc = []
-            self.p.bullet_ls = []
-            self.p.nb_break_bloc = 0
-            if not self.mute:
-                pyxel.play(3, 9)
-        # actualisation entrer dans un level
-        if self.p.level != 0 and self.menu != True and self.enter_level:
-            self.p.nb_bullet = len(LVL_SIZE[self.p.level - 1]['enemie_pos']) + 2
-            self.p.reset_txt()
-            if self.first_enter_level[self.p.level - 1]:
-                self.get_break_bloc()
-                self.first_enter_level[self.p.level - 1] = False
-            self.enemies = []
-            self.map.cam_x = 0
-            self.map.cam_y = 0
-            self.set_break_bloc()
-            self.enter_level = False
-            self.p.x = LVL_SIZE[self.p.level - 1]['player_pos'][0]
-            self.p.y = LVL_SIZE[self.p.level - 1]['player_pos'][1]
-            self.spawn_enemy()
-        # actualisation fin d'un level
-        if self.end_level:
-            self.end_level = False
-            self.menu = True
-            self.p.end_level()
-            self.map.cam_x, self.map.cam_y = 0, 0
-            self.enter_level = True
-            self.enemies = []
-            self.p.nb_bullet = 100
-        # update enemies
-        for enemie in self.enemies:
-            enemie.update(self.p.x, self.p.y)
-        self.enemies = cleanup_list(self.enemies)
+        # tant que le joueur n'a pas gagner tous les niveaux
+        if self.p.acces_level < len(LVL_SIZE) + 1:
+            # actualisation son et music
+            self.time_mute -= 1
+            if self.time_mute < 0:
+                if pyxel.btn(pyxel.KEY_M) and self.mute:
+                    self.mute = False
+                    pyxel.playm(0, loop=True)
+                    self.time_mute = 15
+                elif pyxel.btn(pyxel.KEY_M) and not self.mute:
+                    self.mute = True
+                    self.time_mute = 15
+            if self.mute:
+                pyxel.stop()
+            # bullet detection
+            self.player_bullet_detection()
+            self.enemie_bullet_detection()
+            # help txt
+            if len(LVL_SIZE[self.p.level - 1]['breakeable_bloc']) > 0 and \
+            self.p.nb_break_bloc >= len(LVL_SIZE[self.p.level - 1]['breakeable_bloc']):
+                self.p.help("[R] to reset lvl")
+            # actualisation du joueur et de la position de la camera
+            self.map.cam_x, self.map.cam_y = self.p.update(self.map.cam_x, self.map.cam_y, self.mute)
+            # fin d'un level
+            if self.p.win_level:
+                self.end_level = True
+            if self.p.menu:
+                self.menu = True
+            else:
+                self.menu = False
+            # actualisation de la map
+            self.map.update(self.p.menu, self.p.level)
+            # actualisation quand le joueur meurt
+            if self.p.vie != True:
+                self.enter_level = True
+                self.p.vie = True
+                self.p.breaking_bloc = []
+                self.p.bullet_ls = []
+                self.p.nb_break_bloc = 0
+                if not self.mute:
+                    pyxel.play(3, 9)
+            # actualisation entrer dans un level
+            if self.p.level != 0 and self.menu != True and self.enter_level:
+                self.p.nb_bullet = len(LVL_SIZE[self.p.level - 1]['enemie_pos']) + 2
+                self.p.reset_txt()
+                if self.first_enter_level[self.p.level - 1]:
+                    self.get_break_bloc()
+                    self.first_enter_level[self.p.level - 1] = False
+                self.enemies = []
+                self.map.cam_x = 0
+                self.map.cam_y = 0
+                self.set_break_bloc()
+                self.enter_level = False
+                self.p.x = LVL_SIZE[self.p.level - 1]['player_pos'][0]
+                self.p.y = LVL_SIZE[self.p.level - 1]['player_pos'][1]
+                self.spawn_enemy()
+            # actualisation fin d'un level
+            if self.end_level:
+                self.end_level = False
+                self.menu = True
+                self.p.end_level()
+                self.map.cam_x, self.map.cam_y = 0, 0
+                self.enter_level = True
+                self.enemies = []
+                self.p.nb_bullet = 100
+            # update enemies
+            for enemie in self.enemies:
+                enemie.update(self.p.x, self.p.y)
+            self.enemies = cleanup_list(self.enemies)
 
 
     def draw(self):
         """ affichage des elements du jeu """
         pyxel.cls(0)
-        # affichage de la map
-        self.map.draw()
-        # affichage du joueur
-        self.p.draw()
-        # affichage enemies
-        for enemie in self.enemies:
-            enemie.draw()
-        # display txt
-        self.display_help_txt()
-        self.display_warning_txt()
+        # tant que le joueur n'a pas gagner tous les niveaux
+        if self.p.acces_level < len(LVL_SIZE) + 1:
+            # affichage de la map
+            self.map.draw()
+            # affichage du joueur
+            self.p.draw()
+            # affichage enemies
+            for enemie in self.enemies:
+                enemie.draw()
+            # display txt
+            self.display_help_txt()
+            self.display_warning_txt()
+        else:
+            pyxel.rect(0, 0, 255, 255, 1)
+            pyxel.text(40, 55, "Victoire !!!", 7)
+            pyxel.text(10, 65, "[ECHAP] pour quitter le jeu", 13)
 
 
 if __name__ == '__main__':
