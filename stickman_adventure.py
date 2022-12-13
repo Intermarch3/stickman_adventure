@@ -8,13 +8,6 @@
 
 import pyxel
 
-"""
-TODO:
-- documentation
-- bonus: 
-    - music  et ecran victoire derniere clee
-    - music shoot
-"""
 
 # variables globales et constantes
 TILE_FLOOR = [(2, 3), (4, 3), (2, 6), (5, 2), (6, 2)]
