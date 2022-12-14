@@ -23,5 +23,11 @@ Tu as acces au niveau en ayant obtenu sa clée dans le niveau precedent.
 Dans chaque niveau se trouve des ennemis qui te tire dessus quand tu es trop près d'eux
 
 ## Morts possible :
+- Mort de chute
+- mort par balle
+
+## Blocs spéciaux:
+- blocs cassé: se casse quand on marche dessus après peu de temps
+- trampoline: te fais sauté très haut (⚠ un seul saut d'affilé autorisée)
 
 
