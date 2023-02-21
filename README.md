@@ -1,6 +1,12 @@
 # stickman_adventure
 Un petit jeu en python utilisant la lib pyxel
 
+## Comment y jouer ?
+- sur le web en clickant [ici](https://kitao.github.io/pyxel/wasm/launcher/?run=intermarch3.stickman_adventure.stickman_adventure)
+- en local :
+  - télécharge le repo
+  - lance le fichier python 
+
 ## comment jouer :
 déplacements :
 - gauche: [<-]
